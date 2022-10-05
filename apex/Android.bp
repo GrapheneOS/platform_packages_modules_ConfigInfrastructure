@@ -16,6 +16,14 @@ package {
     default_applicable_licenses: ["Android-Apache-2.0"],
 }
 
+// Encapsulate the contributions made by the com.android.configinfrastructure to the bootclasspath.
+bootclasspath_fragment {
+    name: "com.android.configinfrastructure-bootclasspath-fragment",
+    contents: ["framework-configinfrastructure"],
+    apex_available: ["com.android.configinfrastructure"],
+    hidden_api: {split_packages: ["*"]},
+}
+
 apex_key {
     name: "com.android.configinfrastructure.key",
     public_key: "com.android.configinfrastructure.avbpubkey",
@@ -29,9 +37,15 @@ android_app_certificate {
 
 apex {
     name: "com.android.configinfrastructure",
+    bootclasspath_fragments: ["com.android.configinfrastructure-bootclasspath-fragment"],
     manifest: "manifest.json",
-    file_contexts: ":apex.test-file_contexts",  // Default, please edit, see go/android-apex-howto
+    file_contexts: ":apex.test-file_contexts",
     key: "com.android.configinfrastructure.key",
     certificate: ":com.android.configinfrastructure.certificate",
     updatable: false,
+}
+
+sdk {
+    name: "configinfrastructure-sdk",
+    apexes: ["com.android.configinfrastructure"],
 }
