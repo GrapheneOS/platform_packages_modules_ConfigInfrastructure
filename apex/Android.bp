@@ -24,6 +24,13 @@ bootclasspath_fragment {
     hidden_api: {split_packages: ["*"]},
 }
 
+// Encapsulate the contributions made by the com.android.configinfrastructure to the systemserverclasspath.
+systemserverclasspath_fragment {
+    name: "com.android.configinfrastructure-systemserverclasspath-fragment",
+    contents: ["service-configinfrastructure"],
+    apex_available: ["com.android.configinfrastructure"],
+}
+
 apex_key {
     name: "com.android.configinfrastructure.key",
     public_key: "com.android.configinfrastructure.avbpubkey",
@@ -38,6 +45,9 @@ android_app_certificate {
 apex {
     name: "com.android.configinfrastructure",
     bootclasspath_fragments: ["com.android.configinfrastructure-bootclasspath-fragment"],
+    systemserverclasspath_fragments: [
+        "com.android.configinfrastructure-systemserverclasspath-fragment",
+    ],
     manifest: "manifest.json",
     file_contexts: ":apex.test-file_contexts",
     key: "com.android.configinfrastructure.key",
