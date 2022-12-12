@@ -23,13 +23,20 @@ java_sdk_library {
         "framework-system-server-module-defaults",
         "framework-system-server-module-optimize-defaults",
     ],
-    permitted_packages: [ "android.provider" ],
+    permitted_packages: [
+        "android.provider",
+        "com.android.server.deviceconfig",
+    ],
     apex_available: [
         "com.android.configinfrastructure",
     ],
-    min_sdk_version: "33",
-    sdk_version: "module_current",
-    libs: [
-        "androidx.annotation_annotation",
+    static_libs: [
+        "modules-utils-shell-command-handler",
     ],
+    libs: [
+        "framework-configinfrastructure.impl",
+    ],
+    min_sdk_version: "33",
+    sdk_version: "system_server_current",
+    jarjar_rules: "jarjar-rules.txt",
 }
