@@ -52,6 +52,14 @@ import java.util.concurrent.Executor;
 @SystemApi
 public final class DeviceConfig {
     /**
+     * Namespace for all accessibility related features.
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final String NAMESPACE_ACCESSIBILITY = "accessibility";
+
+    /**
      * Namespace for activity manager related features. These features will be applied
      * immediately upon change.
      *
