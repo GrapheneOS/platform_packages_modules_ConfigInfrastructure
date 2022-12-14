@@ -19,11 +19,17 @@ package {
 java_sdk_library {
     name: "service-configinfrastructure",
     srcs: [ "java/**/*.java" ],
-    defaults: ["framework-system-server-module-defaults"],
+    defaults: [
+        "framework-system-server-module-defaults",
+        "framework-system-server-module-optimize-defaults",
+    ],
     permitted_packages: [ "android.provider" ],
     apex_available: [
         "com.android.configinfrastructure",
     ],
     min_sdk_version: "33",
     sdk_version: "module_current",
+    libs: [
+        "androidx.annotation_annotation",
+    ],
 }
