@@ -174,6 +174,14 @@ public final class DeviceConfig {
     public static final String NAMESPACE_BLUETOOTH = "bluetooth";
 
     /**
+     * Namespace for cellular security related features.
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final String NAMESPACE_CELLULAR_SECURITY = "cellular_security";
+
+    /**
      * Namespace for features relating to clipboard.
      *
      * @hide
