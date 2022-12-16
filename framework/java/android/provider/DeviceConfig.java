@@ -224,6 +224,14 @@ public final class DeviceConfig {
     public static final String NAMESPACE_CONTENT_CAPTURE = "content_capture";
 
     /**
+     * Namespace for credential manager.
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final String NAMESPACE_CREDENTIAL = "credential_manager";
+
+    /**
      * Namespace for device idle configurations.
      *
      * @hide
