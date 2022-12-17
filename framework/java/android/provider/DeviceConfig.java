@@ -52,6 +52,14 @@ import java.util.concurrent.Executor;
 @SystemApi
 public final class DeviceConfig {
     /**
+     * Namespace for all accessibility related features.
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final String NAMESPACE_ACCESSIBILITY = "accessibility";
+
+    /**
      * Namespace for activity manager related features. These features will be applied
      * immediately upon change.
      *
@@ -166,6 +174,14 @@ public final class DeviceConfig {
     public static final String NAMESPACE_BLUETOOTH = "bluetooth";
 
     /**
+     * Namespace for cellular security related features.
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final String NAMESPACE_CELLULAR_SECURITY = "cellular_security";
+
+    /**
      * Namespace for features relating to clipboard.
      *
      * @hide
@@ -214,6 +230,14 @@ public final class DeviceConfig {
      */
     @SystemApi
     public static final String NAMESPACE_CONTENT_CAPTURE = "content_capture";
+
+    /**
+     * Namespace for credential manager.
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final String NAMESPACE_CREDENTIAL = "credential_manager";
 
     /**
      * Namespace for device idle configurations.

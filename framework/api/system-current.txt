@@ -18,6 +18,7 @@ package android.provider {
     method @RequiresPermission(android.Manifest.permission.WRITE_DEVICE_CONFIG) public static boolean setProperties(@NonNull android.provider.DeviceConfig.Properties) throws android.provider.DeviceConfig.BadConfigException;
     method @RequiresPermission(android.Manifest.permission.WRITE_DEVICE_CONFIG) public static boolean setProperty(@NonNull String, @NonNull String, @Nullable String, boolean);
     method @RequiresPermission(android.Manifest.permission.WRITE_DEVICE_CONFIG) public static void setSyncDisabledMode(int);
+    field public static final String NAMESPACE_ACCESSIBILITY = "accessibility";
     field public static final String NAMESPACE_ACTIVITY_MANAGER = "activity_manager";
     field public static final String NAMESPACE_ACTIVITY_MANAGER_NATIVE_BOOT = "activity_manager_native_boot";
     field public static final String NAMESPACE_ADSERVICES = "adservices";
@@ -35,10 +36,12 @@ package android.provider {
     field public static final String NAMESPACE_BLOBSTORE = "blobstore";
     field public static final String NAMESPACE_BLUETOOTH = "bluetooth";
     field public static final String NAMESPACE_CAPTIVEPORTALLOGIN = "captive_portal_login";
+    field public static final String NAMESPACE_CELLULAR_SECURITY = "cellular_security";
     field public static final String NAMESPACE_CLIPBOARD = "clipboard";
     field public static final String NAMESPACE_CONNECTIVITY = "connectivity";
     field public static final String NAMESPACE_CONSTRAIN_DISPLAY_APIS = "constrain_display_apis";
     field public static final String NAMESPACE_CONTENT_CAPTURE = "content_capture";
+    field public static final String NAMESPACE_CREDENTIAL = "credential_manager";
     field @Deprecated public static final String NAMESPACE_DEX_BOOT = "dex_boot";
     field public static final String NAMESPACE_DISPLAY_MANAGER = "display_manager";
     field public static final String NAMESPACE_GAME_DRIVER = "game_driver";
