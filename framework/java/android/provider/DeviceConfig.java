@@ -889,6 +889,37 @@ public final class DeviceConfig {
     private static Map<String, Pair<ContentObserver, Integer>> sNamespaces = new HashMap<>();
     private static final String TAG = "DeviceConfig";
 
+    /**
+     * Interface for monitoring callback functions.
+     *
+     * @hide
+     */
+    @SystemApi
+    public interface MonitorCallback {
+        /**
+         * Callback for updating a namespace.
+         * Reports that a config in the given namespace has changed.
+         * Isn't called for {@link DeviceConfig#getPublicNamespaces() public namespaces}.
+         *
+         * @param updatedNamespace the namespace, within which at least one config has changed.
+         * @hide
+         */
+        @SystemApi
+        void onNamespaceUpdate(@NonNull String updatedNamespace);
+
+        /**
+         * Callback for accessing device config.
+         * Reports an access to a the given namespace and the given calling package.
+         * Isn't called for {@link DeviceConfig#getPublicNamespaces() public namespaces}.
+         *
+         * @param callingPackage the calling package id.
+         * @param namespace the namespace, within which one of its config has been accessed.
+         * @hide
+         */
+        @SystemApi
+        void onDeviceConfigAccess(@NonNull String callingPackage, @NonNull String namespace);
+    }
+
     // Should never be invoked
     private DeviceConfig() {
     }
