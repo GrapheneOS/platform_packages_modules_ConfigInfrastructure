@@ -95,6 +95,11 @@ package android.provider {
     ctor public DeviceConfig.BadConfigException();
   }
 
+  public static interface DeviceConfig.MonitorCallback {
+    method public void onDeviceConfigAccess(@NonNull String, @NonNull String);
+    method public void onNamespaceUpdate(@NonNull String);
+  }
+
   public static interface DeviceConfig.OnPropertiesChangedListener {
     method public void onPropertiesChanged(@NonNull android.provider.DeviceConfig.Properties);
   }
