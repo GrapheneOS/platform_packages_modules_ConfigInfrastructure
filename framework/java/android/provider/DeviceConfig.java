@@ -19,12 +19,14 @@ package android.provider;
 import static android.Manifest.permission.READ_DEVICE_CONFIG;
 import static android.Manifest.permission.WRITE_DEVICE_CONFIG;
 
+import android.Manifest;
 import android.annotation.CallbackExecutor;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.RequiresPermission;
 import android.annotation.SuppressLint;
 import android.annotation.SystemApi;
+import android.content.ContentResolver;
 import android.database.ContentObserver;
 import android.net.Uri;
 import android.util.ArrayMap;
@@ -1262,6 +1264,35 @@ public final class DeviceConfig {
                 sListeners.remove(onPropertiesChangedListener);
             }
         }
+    }
+
+    /**
+     * Setter callback for monitoring Config table.
+     *
+     * @param executor the {@link Executor} on which to invoke the callback
+     * @param callback callback to set
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(Manifest.permission.MONITOR_DEVICE_CONFIG_ACCESS)
+    public static void setMonitorCallback(
+            @NonNull ContentResolver resolver,
+            @NonNull @CallbackExecutor Executor executor,
+            @NonNull MonitorCallback callback) {
+        Settings.Config.setMonitorCallback(resolver, executor, callback);
+    }
+
+    /**
+     * Clear callback for monitoring Config table.
+     * this may only be used to clear callback function registered by
+     * {@link DeviceConfig#setMonitorCallback}
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(Manifest.permission.MONITOR_DEVICE_CONFIG_ACCESS)
+    public static void clearMonitorCallback(@NonNull ContentResolver resolver) {
+        Settings.Config.clearMonitorCallback(resolver);
     }
 
     /**

@@ -3,6 +3,7 @@ package android.provider {
 
   public final class DeviceConfig {
     method public static void addOnPropertiesChangedListener(@NonNull String, @NonNull java.util.concurrent.Executor, @NonNull android.provider.DeviceConfig.OnPropertiesChangedListener);
+    method @RequiresPermission(android.Manifest.permission.MONITOR_DEVICE_CONFIG_ACCESS) public static void clearMonitorCallback(@NonNull android.content.ContentResolver);
     method @RequiresPermission(android.Manifest.permission.WRITE_DEVICE_CONFIG) public static boolean deleteProperty(@NonNull String, @NonNull String);
     method @RequiresPermission(android.Manifest.permission.READ_DEVICE_CONFIG) public static boolean getBoolean(@NonNull String, @NonNull String, boolean);
     method @RequiresPermission(android.Manifest.permission.READ_DEVICE_CONFIG) public static float getFloat(@NonNull String, @NonNull String, float);
@@ -15,6 +16,7 @@ package android.provider {
     method @RequiresPermission(android.Manifest.permission.WRITE_DEVICE_CONFIG) public static int getSyncDisabledMode();
     method public static void removeOnPropertiesChangedListener(@NonNull android.provider.DeviceConfig.OnPropertiesChangedListener);
     method @RequiresPermission(android.Manifest.permission.WRITE_DEVICE_CONFIG) public static void resetToDefaults(int, @Nullable String);
+    method @RequiresPermission(android.Manifest.permission.MONITOR_DEVICE_CONFIG_ACCESS) public static void setMonitorCallback(@NonNull android.content.ContentResolver, @NonNull java.util.concurrent.Executor, @NonNull android.provider.DeviceConfig.MonitorCallback);
     method @RequiresPermission(android.Manifest.permission.WRITE_DEVICE_CONFIG) public static boolean setProperties(@NonNull android.provider.DeviceConfig.Properties) throws android.provider.DeviceConfig.BadConfigException;
     method @RequiresPermission(android.Manifest.permission.WRITE_DEVICE_CONFIG) public static boolean setProperty(@NonNull String, @NonNull String, @Nullable String, boolean);
     method @RequiresPermission(android.Manifest.permission.WRITE_DEVICE_CONFIG) public static void setSyncDisabledMode(int);
