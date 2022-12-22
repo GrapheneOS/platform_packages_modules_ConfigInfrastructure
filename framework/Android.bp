@@ -26,9 +26,6 @@ java_sdk_library {
     ],
     min_sdk_version: "33",
     sdk_version: "module_current",
-    libs: [
-        "androidx.annotation_annotation",
-    ],
     impl_library_visibility: [
         "//packages/modules/ConfigInfrastructure:__subpackages__"
     ],

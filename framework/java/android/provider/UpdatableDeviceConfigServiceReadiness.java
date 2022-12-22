@@ -1,7 +1,5 @@
 package android.provider;
 
-import androidx.annotation.NonNull;
-
 import android.annotation.SystemApi;
 
 /**
