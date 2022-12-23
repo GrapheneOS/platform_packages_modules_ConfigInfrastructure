@@ -126,5 +126,9 @@ package android.provider {
     method @NonNull public android.provider.DeviceConfig.Properties.Builder setString(@NonNull String, @Nullable String);
   }
 
+  public final class UpdatableDeviceConfigServiceReadiness {
+    method public static boolean shouldStartUpdatableService();
+  }
+
 }
 
