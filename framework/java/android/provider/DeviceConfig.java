@@ -852,14 +852,6 @@ public final class DeviceConfig {
     public static final String NAMESPACE_WEAR = "wear";
 
     /**
-     * Namespace for features relating to MBA transparency metadata.
-     *
-     * @hide
-     */
-    @SystemApi
-    public static final String NAMESPACE_TRANSPARENCY_METADATA = "transparency_metadata";
-
-    /**
      * Namespace for the input method manager platform features.
      *
      * @hide
