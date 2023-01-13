@@ -18,9 +18,15 @@ package {
 
 java_sdk_library {
     name: "framework-configinfrastructure",
-    srcs: [ "java/**/*.java" ],
+    srcs: [
+        "java/**/*.java",
+        "java/**/*.aidl",
+    ],
     defaults: ["framework-module-defaults"],
-    permitted_packages: [ "android.provider" ],
+    permitted_packages: [
+        "android.provider",
+        "android.provider.aidl",
+    ],
     apex_available: [
         "com.android.configinfrastructure",
     ],

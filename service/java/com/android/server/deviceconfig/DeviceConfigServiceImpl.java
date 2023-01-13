@@ -18,6 +18,8 @@ package com.android.server.deviceconfig;
 
 import android.content.Context;
 import android.os.RemoteException;
+import android.provider.aidl.IDeviceConfigManager;
+import android.provider.DeviceConfigInitializer;
 
 import com.android.server.deviceconfig.db.DeviceConfigDbAdapter;
 import com.android.server.deviceconfig.db.DeviceConfigDbHelper;
@@ -30,22 +32,29 @@ import java.util.Map;
  *
  * @hide
  */
-public class DeviceConfigServiceImpl {
+public class DeviceConfigServiceImpl extends IDeviceConfigManager.Stub {
     private final DeviceConfigDbAdapter mDbAdapter;
 
     public DeviceConfigServiceImpl(Context context) {
         DeviceConfigDbHelper dbHelper = new DeviceConfigDbHelper(context);
         mDbAdapter = new DeviceConfigDbAdapter(dbHelper.getWritableDatabase());
+
+        DeviceConfigInitializer.getDeviceConfigServiceManager()
+                .getDeviceConfigUpdatableServiceRegisterer()
+                .register(this);
     }
 
+    @Override
     public Map<String, String> getProperties(String namespace, String[] names) throws RemoteException {
         return mDbAdapter.getValuesForNamespace(namespace, names);
     }
 
+    @Override
     public boolean setProperties(String namespace, Map<String, String> values) {
         return mDbAdapter.setValues(namespace, values);
     }
 
+    @Override
     public boolean setProperty(String namespace, String key, String value, boolean makeDefault) {
         return mDbAdapter.setValue(namespace, key, value, makeDefault);
     }

@@ -44,6 +44,13 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Executor;
 
+import android.util.Log;
+
+import android.provider.aidl.IDeviceConfigManager;
+import android.provider.DeviceConfigServiceManager;
+import android.provider.DeviceConfigInitializer;
+import android.os.IBinder;
+
 /**
  * Device level configuration parameters which can be tuned by a separate configuration service.
  * Namespaces that end in "_native" such as {@link #NAMESPACE_NETD_NATIVE} are intended to be used
@@ -53,6 +60,14 @@ import java.util.concurrent.Executor;
  */
 @SystemApi
 public final class DeviceConfig {
+
+    /**
+     * The name of the service that provides the logic to these APIs
+     *
+     * @hide
+     */
+    public static final String SERVICE_NAME = "device_config_updatable";
+
     /**
      * Namespace for all accessibility related features.
      *
@@ -992,7 +1007,7 @@ public final class DeviceConfig {
     @SystemApi
     @NonNull
     @RequiresPermission(READ_DEVICE_CONFIG)
-    public static Properties getProperties(@NonNull String namespace, @NonNull String ... names) {
+    public static Properties getProperties(@NonNull String namespace, @NonNull String... names) {
         return sDataStore.getProperties(namespace, names);
     }
 

@@ -6,7 +6,11 @@ import android.annotation.NonNull;
 import android.annotation.SystemApi;
 import android.content.Context;
 import android.os.Binder;
+import android.provider.DeviceConfig;
+import android.provider.DeviceConfigManager;
 import android.provider.UpdatableDeviceConfigServiceReadiness;
+
+import android.provider.aidl.IDeviceConfigManager;
 
 import com.android.server.SystemService;
 
@@ -21,25 +25,26 @@ public class DeviceConfigInit {
     /** @hide */
     @SystemApi(client = SystemApi.Client.SYSTEM_SERVER)
     public static class Lifecycle extends SystemService {
-        private DeviceConfigShellService mShellService;
+        private DeviceConfigServiceImpl mService;
 
         /** @hide */
         @SystemApi(client = SystemApi.Client.SYSTEM_SERVER)
         public Lifecycle(@NonNull Context context) {
             super(context);
-            // this service is always instantiated but should only launch subsequent services
+            // this service is always instantiated but should only launch subsequent service(s)
             // if the module is ready
             if (UpdatableDeviceConfigServiceReadiness.shouldStartUpdatableService()) {
-                mShellService = new DeviceConfigShellService();
+                mService = new DeviceConfigServiceImpl(getContext());
+                publishBinderService(DeviceConfig.SERVICE_NAME, mService);
             }
         }
 
-        /** @hide */
+        /**
+         * @hide
+         */
         @Override
         public void onStart() {
-            if (UpdatableDeviceConfigServiceReadiness.shouldStartUpdatableService()) {
-                publishBinderService("device_config_updatable", mShellService);
-            }
+            // no op
         }
     }
 }
