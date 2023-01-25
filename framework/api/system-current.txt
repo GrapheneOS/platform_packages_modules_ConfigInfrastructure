@@ -37,6 +37,7 @@ package android.provider {
     field public static final String NAMESPACE_BIOMETRICS = "biometrics";
     field public static final String NAMESPACE_BLOBSTORE = "blobstore";
     field public static final String NAMESPACE_BLUETOOTH = "bluetooth";
+    field public static final String NAMESPACE_CAMERA_NATIVE = "camera_native";
     field public static final String NAMESPACE_CAPTIVEPORTALLOGIN = "captive_portal_login";
     field public static final String NAMESPACE_CELLULAR_SECURITY = "cellular_security";
     field public static final String NAMESPACE_CLIPBOARD = "clipboard";
