@@ -79,6 +79,14 @@ public final class DeviceConfig {
     public static final String NAMESPACE_ACTIVITY_MANAGER_COMPONENT_ALIAS = "activity_manager_ca";
 
     /**
+     * Namespace for features related to auto pin confirmation.
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final String NAMESPACE_AUTO_PIN_CONFIRMATION = "auto_pin_confirmation";
+
+    /**
      * Namespace for all activity manager related features that are used at the native level.
      * These features are applied at reboot.
      *
