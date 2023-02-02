@@ -184,6 +184,14 @@ public final class DeviceConfig {
     public static final String NAMESPACE_BLUETOOTH = "bluetooth";
 
     /**
+     * Namespace for all camera-related features that are used at the native level.
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final String NAMESPACE_CAMERA_NATIVE = "camera_native";
+
+    /**
      * Namespace for cellular security related features.
      *
      * @hide
