@@ -883,6 +883,14 @@ public final class DeviceConfig {
     @SystemApi(client = SystemApi.Client.MODULE_LIBRARIES)
     public static final String NAMESPACE_ARC_APP_COMPAT = "arc_app_compat";
 
+    /**
+     * Namespace for remote authentication features.
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final String NAMESPACE_REMOTE_AUTH = "remote_auth";
+
     private static final Object sLock = new Object();
     @GuardedBy("sLock")
     private static ArrayMap<OnPropertiesChangedListener, Pair<String, Executor>> sListeners =
