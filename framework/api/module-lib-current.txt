@@ -17,6 +17,7 @@ package android.provider {
     field public static final String NAMESPACE_INTERACTION_JANK_MONITOR = "interaction_jank_monitor";
     field public static final String NAMESPACE_LATENCY_TRACKER = "latency_tracker";
     field public static final String NAMESPACE_MEMORY_SAFETY_NATIVE = "memory_safety_native";
+    field public static final String NAMESPACE_MEMORY_SAFETY_NATIVE_BOOT = "memory_safety_native_boot";
     field public static final String NAMESPACE_MGLRU_NATIVE = "mglru_native";
     field public static final String NAMESPACE_REMOTE_KEY_PROVISIONING_NATIVE = "remote_key_provisioning_native";
     field public static final String NAMESPACE_ROTATION_RESOLVER = "rotation_resolver";
