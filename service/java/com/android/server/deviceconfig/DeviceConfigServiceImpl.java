@@ -16,7 +16,9 @@
 
 package com.android.server.deviceconfig;
 
+import android.annotation.NonNull;
 import android.content.Context;
+import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
 import android.provider.aidl.IDeviceConfigManager;
 import android.provider.DeviceConfigInitializer;
@@ -24,7 +26,10 @@ import android.provider.DeviceConfigInitializer;
 import com.android.server.deviceconfig.db.DeviceConfigDbAdapter;
 import com.android.server.deviceconfig.db.DeviceConfigDbHelper;
 
+import java.io.PrintWriter;
 import java.util.Map;
+
+import com.android.modules.utils.BasicShellCommandHandler;
 
 /**
  * DeviceConfig Service implementation (updatable via Mainline) that uses a SQLite database as a storage mechanism
@@ -57,5 +62,32 @@ public class DeviceConfigServiceImpl extends IDeviceConfigManager.Stub {
     @Override
     public boolean setProperty(String namespace, String key, String value, boolean makeDefault) {
         return mDbAdapter.setValue(namespace, key, value, makeDefault);
+    }
+
+    @Override
+    public int handleShellCommand(@NonNull ParcelFileDescriptor in,
+            @NonNull ParcelFileDescriptor out, @NonNull ParcelFileDescriptor err,
+            @NonNull String[] args) {
+        return (new MyShellCommand()).exec(
+                this, in.getFileDescriptor(), out.getFileDescriptor(), err.getFileDescriptor(),
+                args);
+    }
+
+    static final class MyShellCommand extends BasicShellCommandHandler {
+
+        @Override
+        public int onCommand(String cmd) {
+            if (cmd == null || "help".equals(cmd) || "-h".equals(cmd)) {
+                onHelp();
+                return -1;
+            }
+            return -1;
+        }
+
+        @Override
+        public void onHelp() {
+            PrintWriter pw = getOutPrintWriter();
+            pw.println("Device Config implemented in mainline");
+        }
     }
 }
