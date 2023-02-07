@@ -76,6 +76,9 @@ apex {
     ],
     manifest: "manifest.json",
     file_contexts: ":apex.test-file_contexts",
+    prebuilts: [
+        "current_sdkinfo",
+    ],
     key: "com.android.configinfrastructure.key",
     certificate: ":com.android.configinfrastructure.certificate",
     updatable: false,
