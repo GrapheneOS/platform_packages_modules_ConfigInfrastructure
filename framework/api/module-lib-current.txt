@@ -37,5 +37,9 @@ package android.provider {
     ctor public DeviceConfig.Properties(@NonNull String, @Nullable java.util.Map<java.lang.String,java.lang.String>);
   }
 
+  public final class DeviceConfigShellCommandHandler {
+    method public static int handleShellCommand(@NonNull android.os.ParcelFileDescriptor, @NonNull android.os.ParcelFileDescriptor, @NonNull android.os.ParcelFileDescriptor, @NonNull String[]);
+  }
+
 }
 
