@@ -38,7 +38,7 @@ public class DeviceConfigInit {
         @Override
         public void onStart() {
             if (UpdatableDeviceConfigServiceReadiness.shouldStartUpdatableService()) {
-                publishBinderService("device_config", mShellService);
+                publishBinderService("device_config_updatable", mShellService);
             }
         }
     }
