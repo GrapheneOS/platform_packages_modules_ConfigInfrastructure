@@ -115,8 +115,14 @@ public class DeviceConfigServiceDataStore /*implements DeviceConfigDataStore*/ {
 //
 //    @Override
    public boolean deleteProperty(@NonNull String namespace, @NonNull String name) {
-       //        return mManager.deleteProperty(namespace, name);
-       return false;
+       createManagerIfNeeded();
+       if (mManager == null) {
+           if (DEBUG) {
+               Slog.d(TAG, "ServiceDS - setProperty before ready " + namespace + " " + name);
+           }
+           return false;
+       }
+       return mManager.deleteProperty(namespace, name);
    }
 //
 //    @Override

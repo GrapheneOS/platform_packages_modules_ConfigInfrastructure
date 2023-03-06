@@ -65,4 +65,12 @@ public class DeviceConfigManager {
             throw e.rethrowFromSystemServer();
         }
     }
+
+    public boolean deleteProperty(@NonNull String namespace, @NonNull String name) {
+        try {
+            return mService.deleteProperty(namespace, name);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
 }

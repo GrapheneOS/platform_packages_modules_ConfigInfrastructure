@@ -136,10 +136,15 @@ public class DeviceConfigDbAdapter {
         // TODO(b/265948914) implement make default!
     }
 
-    public void deleteValue(String namespace, String key) {
+    /**
+     *
+     * @return true if any value was deleted
+     */
+    public boolean deleteValue(String namespace, String key) {
         String where = DeviceConfigEntry.COLUMN_NAME_NAMESPACE + " = ? "
                 + "and " + DeviceConfigEntry.COLUMN_NAME_KEY + " = ? ";
         String[] whereArgs = { namespace, key };
-        mDb.delete(DeviceConfigEntry.TABLE_NAME, where, whereArgs);
+        int count = mDb.delete(DeviceConfigEntry.TABLE_NAME, where, whereArgs);
+        return count > 0;
     }
 }

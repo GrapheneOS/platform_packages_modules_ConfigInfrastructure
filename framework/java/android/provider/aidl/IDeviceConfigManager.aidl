@@ -12,5 +12,7 @@ interface IDeviceConfigManager {
 
     boolean setProperty(String namespace, String key, String value, boolean makeDefault);
 
+    boolean deleteProperty(String namespace, String key);
+
     // TODO(b/265948914): add remaining methods
 }

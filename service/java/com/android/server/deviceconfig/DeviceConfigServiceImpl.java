@@ -65,6 +65,11 @@ public class DeviceConfigServiceImpl extends IDeviceConfigManager.Stub {
     }
 
     @Override
+    public  boolean deleteProperty(String namespace, String key) {
+        return mDbAdapter.deleteValue(namespace, key);
+    }
+
+    @Override
     public int handleShellCommand(@NonNull ParcelFileDescriptor in,
             @NonNull ParcelFileDescriptor out, @NonNull ParcelFileDescriptor err,
             @NonNull String[] args) {
@@ -74,6 +79,7 @@ public class DeviceConfigServiceImpl extends IDeviceConfigManager.Stub {
     }
 
     static final class MyShellCommand extends BasicShellCommandHandler {
+        // TODO(b/265948938) implement this
 
         @Override
         public int onCommand(String cmd) {
