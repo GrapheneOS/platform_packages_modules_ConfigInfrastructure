@@ -168,6 +168,14 @@ public final class DeviceConfig {
     public static final String NAMESPACE_BATTERY_SAVER = "battery_saver";
 
     /**
+     * Namespace for holding battery stats configuration.
+     *
+     * @hide
+     */
+    @SystemApi(client = SystemApi.Client.MODULE_LIBRARIES)
+    public static final String NAMESPACE_BATTERY_STATS = "battery_stats";
+
+    /**
      * Namespace for blobstore feature that allows apps to share data blobs.
      *
      * @hide
