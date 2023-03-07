@@ -7,6 +7,7 @@ package android.provider {
     field public static final String NAMESPACE_APP_CLONING = "app_cloning";
     field public static final String NAMESPACE_APP_STANDBY = "app_standby";
     field public static final String NAMESPACE_ARC_APP_COMPAT = "arc_app_compat";
+    field public static final String NAMESPACE_BATTERY_STATS = "battery_stats";
     field public static final String NAMESPACE_CONFIGURATION = "configuration";
     field public static final String NAMESPACE_CONNECTIVITY_THERMAL_POWER_MANAGER = "connectivity_thermal_power_manager";
     field public static final String NAMESPACE_CONTACTS_PROVIDER = "contacts_provider";
