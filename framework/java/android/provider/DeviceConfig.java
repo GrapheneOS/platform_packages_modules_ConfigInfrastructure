@@ -232,6 +232,14 @@ public final class DeviceConfig {
     public static final String NAMESPACE_CAPTIVEPORTALLOGIN = "captive_portal_login";
 
     /**
+     * Namespace for all HealthFitness related features.
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final String NAMESPACE_HEALTH_FITNESS = "health_fitness";
+
+    /**
      * Namespace for Tethering module.
      *
      * @hide
