@@ -81,8 +81,7 @@ apex {
     ],
     key: "com.android.configinfrastructure.key",
     certificate: ":com.android.configinfrastructure.certificate",
-    updatable: true,
-    min_sdk_version: "UpsideDownCake",
+    updatable: false,
 }
 
 sdk {
