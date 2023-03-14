@@ -1127,6 +1127,7 @@ final class WritableFlags {
                 "device_personalization_services/write_to_pfd",
                 "device_personalization_services/youtube_export_enabled",
                 "device_policy_manager/enable_coexistence",
+                "device_policy_manager/enable_device_policy_engine",
                 "device_policy_manager/enable_keep_profiles_running",
                 "device_policy_manager/enable_permission_based_access",
                 "device_policy_manager/enable_switch_to_managed_profile_dialog",
