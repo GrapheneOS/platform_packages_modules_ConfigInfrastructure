@@ -36,7 +36,7 @@ java_sdk_library {
     libs: [
         "framework-configinfrastructure.impl",
     ],
-    min_sdk_version: "33",
+    min_sdk_version: "UpsideDownCake",
     sdk_version: "system_server_current",
     jarjar_rules: "jarjar-rules.txt",
 }
