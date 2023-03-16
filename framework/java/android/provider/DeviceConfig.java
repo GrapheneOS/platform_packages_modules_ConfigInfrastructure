@@ -23,6 +23,7 @@ import static android.Manifest.permission.READ_WRITE_SYNC_DISABLED_MODE_CONFIG;
 
 import android.Manifest;
 import android.annotation.CallbackExecutor;
+import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.RequiresPermission;
@@ -36,6 +37,11 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.annotations.GuardedBy;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -925,6 +931,43 @@ public final class DeviceConfig {
     @SystemApi
     public static final String NAMESPACE_REMOTE_AUTH = "remote_auth";
 
+    /**
+     * The modes that can be used when disabling syncs to the 'config' settings.
+     * @hide
+     */
+    @IntDef(prefix = "SYNC_DISABLED_MODE_",
+            value = { SYNC_DISABLED_MODE_NONE, SYNC_DISABLED_MODE_PERSISTENT,
+                    SYNC_DISABLED_MODE_UNTIL_REBOOT })
+    @Retention(RetentionPolicy.SOURCE)
+    @Target({ElementType.TYPE_PARAMETER, ElementType.TYPE_USE})
+    public @interface SyncDisabledMode {}
+
+    /**
+     * Sync is not disabled.
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final int SYNC_DISABLED_MODE_NONE = 0;
+
+    /**
+     * Disabling of Config bulk update / syncing is persistent, i.e. it survives a device
+     * reboot.
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final int SYNC_DISABLED_MODE_PERSISTENT = 1;
+
+    /**
+     * Disabling of Config bulk update / syncing is not persistent, i.e. it will
+     * not survive a device reboot.
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final int SYNC_DISABLED_MODE_UNTIL_REBOOT = 2;
+    
     private static final Object sLock = new Object();
     @GuardedBy("sLock")
     private static ArrayMap<OnPropertiesChangedListener, Pair<String, Executor>> sListeners =
