@@ -1642,6 +1642,8 @@ final class WritableFlags {
                 "telephony/ramping_ringer_duration",
                 "telephony/ramping_ringer_enabled",
                 "telephony/ramping_ringer_vibration_duration",
+                "testspace/flagname",
+                "testspace/another",
                 "tethering/enable_java_bpf_map",
                 "textclassifier/ar_manifest",
                 "textclassifier/da_manifest",
