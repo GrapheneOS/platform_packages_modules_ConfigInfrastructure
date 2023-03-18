@@ -95,6 +95,9 @@ package android.provider {
     field public static final String NAMESPACE_UWB = "uwb";
     field public static final String NAMESPACE_WEARABLE_SENSING = "wearable_sensing";
     field public static final String NAMESPACE_WINDOW_MANAGER_NATIVE_BOOT = "window_manager_native_boot";
+    field public static final int SYNC_DISABLED_MODE_NONE = 0; // 0x0
+    field public static final int SYNC_DISABLED_MODE_PERSISTENT = 1; // 0x1
+    field public static final int SYNC_DISABLED_MODE_UNTIL_REBOOT = 2; // 0x2
   }
 
   public static class DeviceConfig.BadConfigException extends java.lang.Exception {
