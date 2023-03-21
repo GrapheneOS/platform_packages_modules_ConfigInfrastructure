@@ -1341,6 +1341,7 @@ final class WritableFlags {
                 "launcher/use_app_search_for_web",
                 "launcher/use_fallback_app_search",
                 "low_power_standby/enable_policy",
+                "low_power_standby/enable_standby_ports",
                 "lmkd_native/thrashing_limit_critical",
                 "location/adas_settings_allowlist",
                 "location/enable_location_provider_manager_msl",
