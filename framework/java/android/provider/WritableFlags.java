@@ -1465,6 +1465,7 @@ final class WritableFlags {
                 "privacy/permissions_hub_subattribution_enabled",
                 "privacy/placeholder_safety_label_updates_enabled",
                 "privacy/privacy_attribution_tag_full_log_enabled",
+                "privacy/privacy_dashboard_7_day_toggle",
                 "privacy/privacy_hub_enabled",
                 "privacy/privacy_placeholder_safety_label_data_enabled",
                 "privacy/safety_center_background_refresh_denied_sources",
