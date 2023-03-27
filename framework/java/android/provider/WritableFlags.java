@@ -215,6 +215,8 @@ final class WritableFlags {
                 "autofill/autofill_dialog_enabled",
                 "autofill/autofill_dialog_hints",
                 "autofill/compat_mode_allowed_packages",
+                "autofill/include_all_autofill_type_not_none_views_in_assist_structure",
+                "autofill/include_all_views_in_assist_structure",
                 "autofill/landscape_body_height_max_percent",
                 "autofill/legacy_augmented_autofill_mode",
                 "autofill/non_autofillable_ime_action_ids",
