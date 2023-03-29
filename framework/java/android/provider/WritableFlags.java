@@ -6,7 +6,7 @@ import java.util.Set;
 import java.util.List;
 
 /**
- * Contains the list of flags that can be written with ALLOWLISTED_WRITE_DEVICE_CONFIG.
+ * Contains the list of flags that can be written with WRITE_ALLOWLISTED_DEVICE_CONFIG.
  * <p>
  * A security review is required for any flag that's added to this list. To add to the
  * list, create a change and tag the OWNER. In the change description, include a
@@ -1368,6 +1368,7 @@ final class WritableFlags {
                 "namespace1/key3",
                 "namespace2/key1",
                 "namespace2/key2",
+                "namespace2/key3",
                 "nearby/enable_presence_broadcast_legacy",
                 "nearby/fast_pair_aosp_enabled",
                 "nearby/nano_app_min_version",
