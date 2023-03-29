@@ -259,6 +259,7 @@ final class WritableFlags {
                 "car/bugreport_upload_destination",
                 "cellular_security/enable_cipher_display",
                 "cellular_security/enable_null_cipher_toggle",
+                "clipboard/allow_virtualdevice_silos",
                 "clipboard/auto_clear_enabled",
                 "clipboard/auto_clear_timeout",
                 "companion/enable_context_sync_telecom",
