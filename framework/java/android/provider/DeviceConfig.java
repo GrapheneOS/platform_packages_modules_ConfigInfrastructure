@@ -16,7 +16,7 @@
 
 package android.provider;
 
-import static android.Manifest.permission.ALLOWLISTED_WRITE_DEVICE_CONFIG;
+import static android.Manifest.permission.WRITE_ALLOWLISTED_DEVICE_CONFIG;
 import static android.Manifest.permission.READ_DEVICE_CONFIG;
 import static android.Manifest.permission.WRITE_DEVICE_CONFIG;
 import static android.Manifest.permission.READ_WRITE_SYNC_DISABLED_MODE_CONFIG;
@@ -1190,7 +1190,7 @@ public final class DeviceConfig {
      * @see #resetToDefaults(int, String).
      */
     @SystemApi
-    @RequiresPermission(anyOf = {WRITE_DEVICE_CONFIG, ALLOWLISTED_WRITE_DEVICE_CONFIG})
+    @RequiresPermission(anyOf = {WRITE_DEVICE_CONFIG, WRITE_ALLOWLISTED_DEVICE_CONFIG})
     public static boolean setProperty(@NonNull String namespace, @NonNull String name,
             @Nullable String value, boolean makeDefault) {
         return Settings.Config.putString(namespace, name, value, makeDefault);
@@ -1212,7 +1212,7 @@ public final class DeviceConfig {
      * @hide
      */
     @SystemApi
-    @RequiresPermission(anyOf = {WRITE_DEVICE_CONFIG, ALLOWLISTED_WRITE_DEVICE_CONFIG})
+    @RequiresPermission(anyOf = {WRITE_DEVICE_CONFIG, WRITE_ALLOWLISTED_DEVICE_CONFIG})
     public static boolean setProperties(@NonNull Properties properties) throws BadConfigException {
         return Settings.Config.setStrings(properties.getNamespace(),
                 properties.mMap);
@@ -1228,7 +1228,7 @@ public final class DeviceConfig {
      * @hide
      */
     @SystemApi
-    @RequiresPermission(anyOf = {WRITE_DEVICE_CONFIG, ALLOWLISTED_WRITE_DEVICE_CONFIG})
+    @RequiresPermission(anyOf = {WRITE_DEVICE_CONFIG, WRITE_ALLOWLISTED_DEVICE_CONFIG})
     public static boolean deleteProperty(@NonNull String namespace, @NonNull String name) {
         return Settings.Config.deleteString(namespace, name);
     }
@@ -1259,7 +1259,7 @@ public final class DeviceConfig {
      * @see #setProperty(String, String, String, boolean)
      */
     @SystemApi
-    @RequiresPermission(anyOf = {WRITE_DEVICE_CONFIG, ALLOWLISTED_WRITE_DEVICE_CONFIG})
+    @RequiresPermission(anyOf = {WRITE_DEVICE_CONFIG, WRITE_ALLOWLISTED_DEVICE_CONFIG})
     public static void resetToDefaults(int resetMode, @Nullable String namespace) {
         Settings.Config.resetToDefaults(resetMode, namespace);
     }
