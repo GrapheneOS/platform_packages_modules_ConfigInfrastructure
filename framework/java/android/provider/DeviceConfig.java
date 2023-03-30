@@ -52,6 +52,13 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Executor;
 
+import android.util.Log;
+
+import android.provider.aidl.IDeviceConfigManager;
+import android.provider.DeviceConfigServiceManager;
+import android.provider.DeviceConfigInitializer;
+import android.os.IBinder;
+
 /**
  * Device level configuration parameters which can be tuned by a separate configuration service.
  * Namespaces that end in "_native" such as {@link #NAMESPACE_NETD_NATIVE} are intended to be used
@@ -61,6 +68,14 @@ import java.util.concurrent.Executor;
  */
 @SystemApi
 public final class DeviceConfig {
+
+    /**
+     * The name of the service that provides the logic to these APIs
+     *
+     * @hide
+     */
+    public static final String SERVICE_NAME = "device_config_updatable";
+
     /**
      * Namespace for all accessibility related features.
      *
@@ -976,6 +991,8 @@ public final class DeviceConfig {
     private static Map<String, Pair<ContentObserver, Integer>> sNamespaces = new HashMap<>();
     private static final String TAG = "DeviceConfig";
 
+    private static final DeviceConfigDataStore sDataStore = new SettingsConfigDataStore();
+
     /**
      * Interface for monitoring callback functions.
      *
@@ -1051,9 +1068,8 @@ public final class DeviceConfig {
     @SystemApi
     @NonNull
     @RequiresPermission(READ_DEVICE_CONFIG)
-    public static Properties getProperties(@NonNull String namespace, @NonNull String ... names) {
-        return new Properties(namespace,
-                Settings.Config.getStrings(namespace, Arrays.asList(names)));
+    public static Properties getProperties(@NonNull String namespace, @NonNull String... names) {
+        return sDataStore.getProperties(namespace, names);
     }
 
     /**
@@ -1193,7 +1209,7 @@ public final class DeviceConfig {
     @RequiresPermission(anyOf = {WRITE_DEVICE_CONFIG, WRITE_ALLOWLISTED_DEVICE_CONFIG})
     public static boolean setProperty(@NonNull String namespace, @NonNull String name,
             @Nullable String value, boolean makeDefault) {
-        return Settings.Config.putString(namespace, name, value, makeDefault);
+        return sDataStore.setProperty(namespace, name, value, makeDefault);
     }
 
     /**
@@ -1214,8 +1230,7 @@ public final class DeviceConfig {
     @SystemApi
     @RequiresPermission(anyOf = {WRITE_DEVICE_CONFIG, WRITE_ALLOWLISTED_DEVICE_CONFIG})
     public static boolean setProperties(@NonNull Properties properties) throws BadConfigException {
-        return Settings.Config.setStrings(properties.getNamespace(),
-                properties.mMap);
+        return sDataStore.setProperties(properties);
     }
 
     /**
@@ -1230,7 +1245,7 @@ public final class DeviceConfig {
     @SystemApi
     @RequiresPermission(anyOf = {WRITE_DEVICE_CONFIG, WRITE_ALLOWLISTED_DEVICE_CONFIG})
     public static boolean deleteProperty(@NonNull String namespace, @NonNull String name) {
-        return Settings.Config.deleteString(namespace, name);
+        return sDataStore.deleteProperty(namespace, name);
     }
 
     /**
@@ -1261,7 +1276,7 @@ public final class DeviceConfig {
     @SystemApi
     @RequiresPermission(anyOf = {WRITE_DEVICE_CONFIG, WRITE_ALLOWLISTED_DEVICE_CONFIG})
     public static void resetToDefaults(int resetMode, @Nullable String namespace) {
-        Settings.Config.resetToDefaults(resetMode, namespace);
+        sDataStore.resetToDefaults(resetMode, namespace);
     }
 
     /**
@@ -1279,7 +1294,7 @@ public final class DeviceConfig {
     @SystemApi
     @RequiresPermission(anyOf = {WRITE_DEVICE_CONFIG, READ_WRITE_SYNC_DISABLED_MODE_CONFIG})
     public static void setSyncDisabledMode(int syncDisabledMode) {
-        Settings.Config.setSyncDisabledMode(syncDisabledMode);
+        sDataStore.setSyncDisabledMode(syncDisabledMode);
     }
 
     /**
@@ -1291,7 +1306,7 @@ public final class DeviceConfig {
     @SystemApi
     @RequiresPermission(anyOf = {WRITE_DEVICE_CONFIG, READ_WRITE_SYNC_DISABLED_MODE_CONFIG})
     public static int getSyncDisabledMode() {
-        return Settings.Config.getSyncDisabledMode();
+        return sDataStore.getSyncDisabledMode();
     }
 
     /**
@@ -1365,7 +1380,7 @@ public final class DeviceConfig {
             @NonNull ContentResolver resolver,
             @NonNull @CallbackExecutor Executor executor,
             @NonNull MonitorCallback callback) {
-        Settings.Config.setMonitorCallback(resolver, executor, callback);
+        sDataStore.setMonitorCallback(resolver, executor, callback);
     }
 
     /**
@@ -1377,7 +1392,7 @@ public final class DeviceConfig {
     @SystemApi
     @RequiresPermission(Manifest.permission.MONITOR_DEVICE_CONFIG_ACCESS)
     public static void clearMonitorCallback(@NonNull ContentResolver resolver) {
-        Settings.Config.clearMonitorCallback(resolver);
+        sDataStore.clearMonitorCallback(resolver);
     }
 
     /**
@@ -1403,7 +1418,7 @@ public final class DeviceConfig {
                     }
                 }
             };
-            Settings.Config
+            sDataStore
                     .registerContentObserver(namespace, true, contentObserver);
             sNamespaces.put(namespace, new Pair<>(contentObserver, 1));
         }
@@ -1427,7 +1442,7 @@ public final class DeviceConfig {
             sNamespaces.put(namespace, new Pair<>(namespaceCount.first, namespaceCount.second - 1));
         } else {
             // Decrementing a namespace to zero means we no longer need its ContentObserver.
-            Settings.Config.unregisterContentObserver(namespaceCount.first);
+            sDataStore.unregisterContentObserver(namespaceCount.first);
             sNamespaces.remove(namespace);
         }
     }
@@ -1653,6 +1668,15 @@ public final class DeviceConfig {
                 Log.e(TAG, "Parsing float failed for " + name);
                 return defaultValue;
             }
+        }
+
+        /**
+         * Returns a map with the underlying property values defined by this object
+         *
+         * @hide
+         */
+        public @NonNull Map<String, String> getPropertyValues() {
+            return new HashMap<>(mMap);
         }
 
         /**
