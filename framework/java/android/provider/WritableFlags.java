@@ -1557,6 +1557,8 @@ final class WritableFlags {
                 "storage_native_boot/anr_delay_millis",
                 "storage_native_boot/anr_delay_notify_external_storage_service",
                 "storage_native_boot/charging_required",
+                "storage_native_boot/cloud_media_enforce_provider_allowlist",
+                "storage_native_boot/cloud_media_feature_enabled",
                 "storage_native_boot/dirty_reclaim_rate",
                 "storage_native_boot/forced_scoped_storage_whitelist",
                 "storage_native_boot/fuse_enabled",
