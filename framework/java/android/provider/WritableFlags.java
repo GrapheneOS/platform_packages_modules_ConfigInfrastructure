@@ -6,7 +6,7 @@ import java.util.Set;
 import java.util.List;
 
 /**
- * Contains the list of flags that can be written with ALLOWLISTED_WRITE_DEVICE_CONFIG.
+ * Contains the list of flags that can be written with WRITE_ALLOWLISTED_DEVICE_CONFIG.
  * <p>
  * A security review is required for any flag that's added to this list. To add to the
  * list, create a change and tag the OWNER. In the change description, include a
@@ -1302,6 +1302,7 @@ final class WritableFlags {
                 "ipsec/config_auto_natt_keepalives_cellular_timeout_override_seconds",
                 "kiwi/enable_remapping_by_inputsdk_version",
                 "kiwi/input_remapping_blocklist",
+                "latency_tracker/action_request_ime_shown_enable",
                 "latency_tracker/action_show_voice_interaction_enable",
                 "latency_tracker/action_show_voice_interaction_sample_interval",
                 "latency_tracker/action_show_voice_interaction_trace_threshold",
@@ -1370,6 +1371,7 @@ final class WritableFlags {
                 "namespace1/key3",
                 "namespace2/key1",
                 "namespace2/key2",
+                "namespace2/key3",
                 "nearby/enable_presence_broadcast_legacy",
                 "nearby/fast_pair_aosp_enabled",
                 "nearby/nano_app_min_version",
@@ -1435,6 +1437,7 @@ final class WritableFlags {
                 "oslo/media_app_whitelist",
                 "ota/enable_server_based_ror",
                 "ota/wait_for_internet_ror",
+                "package_manager_service/MinInstallableTargetSdk__install_block_enabled",
                 "package_manager_service/dormant_app_threshold_days",
                 "package_manager_service/downgrade_unused_apps_enabled",
                 "package_manager_service/inactive_app_threshold_days",
@@ -1446,6 +1449,7 @@ final class WritableFlags {
                 "package_manager_service/min_installable_target_sdk",
                 "package_manager_service/strict_mode_target_sdk",
                 "permissions/auto_revoke_check_frequency_millis",
+                "permissions/permission_changes_store_exact_time",
                 "privacy/bg_location_check_is_enabled",
                 "privacy/camera_mic_icons_enabled",
                 "privacy/camera_toggle_enabled",
@@ -1692,6 +1696,7 @@ final class WritableFlags {
                 "textclassifier/ja_manifest",
                 "textclassifier/ko_manifest",
                 "textclassifier/ko_manifest",
+                "textclassifier/local_textclassifier_enabled",
                 "textclassifier/manifest_download_max_attempts",
                 "textclassifier/manifest_download_required_network_type",
                 "textclassifier/model_download_backoff_delay_in_millis",
@@ -1707,6 +1712,7 @@ final class WritableFlags {
                 "textclassifier/pt_manifest",
                 "textclassifier/ru_manifest",
                 "textclassifier/sv_manifest",
+                "textclassifier/system_textclassifier_api_timeout_in_second",
                 "textclassifier/textclassifier_service_package_override",
                 "textclassifier/th_manifest",
                 "textclassifier/tr_manifest",
