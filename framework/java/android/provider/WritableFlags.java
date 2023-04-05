@@ -1307,6 +1307,7 @@ final class WritableFlags {
                 "latency_tracker/action_show_voice_interaction_enable",
                 "latency_tracker/action_show_voice_interaction_sample_interval",
                 "latency_tracker/action_show_voice_interaction_trace_threshold",
+                "latency_tracker/action_show_selection_toolbar_enable",
                 "latency_tracker/action_user_switch_enable",
                 "latency_tracker/enabled",
                 "latency_tracker/sampling_interval",
