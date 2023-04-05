@@ -219,6 +219,7 @@ final class WritableFlags {
                 "autofill/include_all_views_in_assist_structure",
                 "autofill/landscape_body_height_max_percent",
                 "autofill/legacy_augmented_autofill_mode",
+                "autofill/multiline_filter_enabled",
                 "autofill/non_autofillable_ime_action_ids",
                 "autofill/package_and_activity_allowlist_for_triggering_fill_request",
                 "autofill/package_deny_list_for_unimportant_view",
