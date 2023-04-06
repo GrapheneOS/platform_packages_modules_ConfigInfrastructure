@@ -255,6 +255,14 @@ public final class DeviceConfig {
     public static final String NAMESPACE_CAPTIVEPORTALLOGIN = "captive_portal_login";
 
     /**
+     * Namespace for all EdgeTpu related features.
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final String NAMESPACE_EDGETPU_NATIVE = "edgetpu_native";
+
+    /**
      * Namespace for all HealthFitness related features.
      *
      * @hide
