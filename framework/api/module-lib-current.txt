@@ -25,6 +25,7 @@ package android.provider {
     field public static final String NAMESPACE_SETTINGS_STATS = "settings_stats";
     field public static final String NAMESPACE_SETTINGS_UI = "settings_ui";
     field public static final String NAMESPACE_TARE = "tare";
+    field public static final String NAMESPACE_TETHERING_U_OR_LATER_NATIVE = "tethering_u_or_later_native";
     field public static final String NAMESPACE_VENDOR_SYSTEM_NATIVE = "vendor_system_native";
     field public static final String NAMESPACE_VENDOR_SYSTEM_NATIVE_BOOT = "vendor_system_native_boot";
     field public static final String NAMESPACE_VIRTUALIZATION_FRAMEWORK_NATIVE = "virtualization_framework_native";

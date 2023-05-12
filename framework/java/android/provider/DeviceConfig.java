@@ -954,6 +954,19 @@ public final class DeviceConfig {
     @SystemApi
     public static final String NAMESPACE_REMOTE_AUTH = "remote_auth";
 
+
+    /**
+     * Namespace for tethering module native features.
+     * Flags defined in this namespace are only usable on
+     * {@link android.os.Build.VERSION_CODES#UPSIDE_DOWN_CAKE} and newer.
+     * On older Android releases, they will not be propagated to native code.
+     *
+     * @hide
+     */
+    @SystemApi(client = SystemApi.Client.MODULE_LIBRARIES)
+    public static final String NAMESPACE_TETHERING_U_OR_LATER_NATIVE =
+            "tethering_u_or_later_native";
+
     /**
      * Namespace for all near field communication (nfc) related features.
      *
