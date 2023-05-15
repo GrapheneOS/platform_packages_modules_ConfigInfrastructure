@@ -955,6 +955,14 @@ public final class DeviceConfig {
     public static final String NAMESPACE_REMOTE_AUTH = "remote_auth";
 
     /**
+     * Namespace for all near field communication (nfc) related features.
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final String NAMESPACE_NFC = "nfc";
+
+    /**
      * The modes that can be used when disabling syncs to the 'config' settings.
      * @hide
      */
