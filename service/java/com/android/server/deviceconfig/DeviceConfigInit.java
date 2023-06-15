@@ -46,5 +46,19 @@ public class DeviceConfigInit {
         public void onStart() {
             // no op
         }
+
+        /**
+         * Apply staged flags on boot.
+         *
+         * @param phase one of {@code SystemService.BootPhase}
+         * @hide
+         */
+        @Override
+        public void onBootPhase(/* @BootPhase */ int phase) {
+            // TODO(b/286057899): move this earlier in the boot process
+            if (phase == SystemService.PHASE_BOOT_COMPLETED) {
+                DeviceConfigApplyStagedFlags.applyStagedFlags();
+            }
+        }
     }
 }
