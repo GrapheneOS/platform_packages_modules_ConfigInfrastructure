@@ -21,7 +21,7 @@ filegroup {
 
 android_test {
     name: "ConfigInfrastructureServiceUnitTests",
-    min_sdk_version: "UpsideDownCake",
+    min_sdk_version: "34",
     sdk_version: "module_current",
     manifest: "AndroidManifest.xml",
     test_config: "AndroidTest.xml",
