@@ -6,12 +6,12 @@ package android.provider {
     method @RequiresPermission(android.Manifest.permission.MONITOR_DEVICE_CONFIG_ACCESS) public static void clearMonitorCallback(@NonNull android.content.ContentResolver);
     method @RequiresPermission(anyOf={android.Manifest.permission.WRITE_DEVICE_CONFIG, android.Manifest.permission.WRITE_ALLOWLISTED_DEVICE_CONFIG}) public static boolean deleteProperty(@NonNull String, @NonNull String);
     method @NonNull public static java.util.Set<java.lang.String> getAdbWritableFlags();
-    method @RequiresPermission(android.Manifest.permission.READ_DEVICE_CONFIG) public static boolean getBoolean(@NonNull String, @NonNull String, boolean);
+    method public static boolean getBoolean(@NonNull String, @NonNull String, boolean);
     method @RequiresPermission(android.Manifest.permission.READ_DEVICE_CONFIG) public static float getFloat(@NonNull String, @NonNull String, float);
     method @RequiresPermission(android.Manifest.permission.READ_DEVICE_CONFIG) public static int getInt(@NonNull String, @NonNull String, int);
     method @RequiresPermission(android.Manifest.permission.READ_DEVICE_CONFIG) public static long getLong(@NonNull String, @NonNull String, long);
     method @NonNull @RequiresPermission(android.Manifest.permission.READ_DEVICE_CONFIG) public static android.provider.DeviceConfig.Properties getProperties(@NonNull String, @NonNull java.lang.String...);
-    method @Nullable @RequiresPermission(android.Manifest.permission.READ_DEVICE_CONFIG) public static String getProperty(@NonNull String, @NonNull String);
+    method @Nullable public static String getProperty(@NonNull String, @NonNull String);
     method @NonNull public static java.util.List<java.lang.String> getPublicNamespaces();
     method @Nullable @RequiresPermission(android.Manifest.permission.READ_DEVICE_CONFIG) public static String getString(@NonNull String, @NonNull String, @Nullable String);
     method @RequiresPermission(anyOf={android.Manifest.permission.WRITE_DEVICE_CONFIG, android.Manifest.permission.READ_WRITE_SYNC_DISABLED_MODE_CONFIG}) public static int getSyncDisabledMode();
