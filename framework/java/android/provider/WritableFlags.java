@@ -1739,6 +1739,7 @@ final class WritableFlags {
                 "vpn/enable_pixel_ppn_feature",
                 "wallpaper_content/enabled",
                 "wearable_sensing/service_enabled_platforms",
+                "wearable_sensing/service_enabled",
                 "wear/ambient_auto_resume_timeout_max_reset_count",
                 "wear/bedtime_hard_mode_feature_enabled",
                 "wear/enable_backup_service_in_wear_framework",
