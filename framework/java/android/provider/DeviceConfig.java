@@ -234,6 +234,14 @@ public final class DeviceConfig {
     public static final String NAMESPACE_BLUETOOTH = "bluetooth";
 
     /**
+     * Namespace for features relating to android core experiments team internal usage.
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final String NAMESPACE_CORE_EXPERIMENTS_TEAM_INTERNAL = "core_experiments_team_internal";
+
+    /**
      * Namespace for all camera-related features that are used at the native level.
      *
      * @hide
