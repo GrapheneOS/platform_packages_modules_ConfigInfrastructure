@@ -991,7 +991,7 @@ public final class DeviceConfig {
      * @hide
      */
     @SystemApi(client = SystemApi.Client.MODULE_LIBRARIES)
-    public static final String NAMESPACE_TETHERING_U_OR_LATER_NATIVE =
+    public static final String NAMESPACE_TETHERING_NATIVE =
             "tethering_u_or_later_native";
 
     /**
