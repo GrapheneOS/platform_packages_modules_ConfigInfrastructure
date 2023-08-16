@@ -32,6 +32,7 @@ import android.annotation.SystemApi;
 import android.content.ContentResolver;
 import android.database.ContentObserver;
 import android.net.Uri;
+import com.android.modules.utils.build.SdkLevel;
 import android.util.ArrayMap;
 import android.util.Log;
 import android.util.Pair;
@@ -46,6 +47,7 @@ import java.lang.annotation.Target;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -1049,6 +1051,9 @@ public final class DeviceConfig {
 
     private static final DeviceConfigDataStore sDataStore = new SettingsConfigDataStore();
 
+    private static final String DEVICE_CONFIG_OVERRIDES_NAMESPACE =
+            "device_config_overrides";
+
     /**
      * Interface for monitoring callback functions.
      *
@@ -1109,6 +1114,8 @@ public final class DeviceConfig {
      * Each call to {@link #setProperties(Properties)} is also atomic and ensures that either none
      * or all of the change is picked up here, but never only part of it.
      *
+     * If there are any local overrides applied, they will take precedence over underlying values.
+     *
      * @param namespace The namespace containing the properties to look up.
      * @param names     The names of properties to look up, or empty to fetch all properties for the
      *                  given namespace.
@@ -1124,7 +1131,78 @@ public final class DeviceConfig {
     @NonNull
     @RequiresPermission(READ_DEVICE_CONFIG)
     public static Properties getProperties(@NonNull String namespace, @NonNull String... names) {
+        Properties propertiesWithoutOverrides =
+                getPropertiesWithoutOverrides(namespace, names);
+        if (SdkLevel.isAtLeastV()) {
+            return applyOverrides(propertiesWithoutOverrides);
+        } else {
+            return propertiesWithoutOverrides;
+        }
+    }
+
+    @NonNull
+    private static Properties getPropertiesWithoutOverrides(@NonNull String namespace,
+        @NonNull String... names) {
         return sDataStore.getProperties(namespace, names);
+    }
+
+    private static Properties applyOverrides(@NonNull Properties properties) {
+        Properties overrides =
+                getPropertiesWithoutOverrides(DEVICE_CONFIG_OVERRIDES_NAMESPACE);
+        Map<String, String> newPropertiesMap = new HashMap<>();
+
+        HashSet<String> flags = new HashSet(properties.getKeyset());
+        for (String override : overrides.getKeyset()) {
+            String[] namespaceAndFlag = override.split(":");
+            if (properties.getNamespace().equals(namespaceAndFlag[0])) {
+                flags.add(namespaceAndFlag[1]);
+            }
+        }
+
+        for (String flag : flags) {
+            String override =
+                overrides.getString(properties.getNamespace() + ":" + flag, null);
+            if (override != null) {
+                newPropertiesMap.put(flag, override);
+            } else {
+                newPropertiesMap.put(flag, properties.getString(flag, null));
+            }
+        }
+        return new Properties(properties.getNamespace(), newPropertiesMap);
+    }
+
+    /**
+     * List all stored flags.
+     *
+     * The keys take the form {@code namespace/name}, and the values are the flag values.
+     *
+     * @hide
+     */
+    @SystemApi
+    @NonNull
+    public static Set<Properties> getAllProperties() {
+        Map<String, String> properties = sDataStore.getAllProperties();
+        Map<String, Map<String, String>> propertyMaps = new HashMap<>();
+        for (String flag : properties.keySet()) {
+            String[] namespaceAndFlag = flag.split("/");
+            String namespace = namespaceAndFlag[0];
+            String flagName = namespaceAndFlag[1];
+            String override =
+                    getProperty(DEVICE_CONFIG_OVERRIDES_NAMESPACE, namespace + ":" + flagName);
+
+            String value = override != null ? override : properties.get(flag);
+
+            if (!propertyMaps.containsKey(namespace)) {
+                propertyMaps.put(namespace, new HashMap<>());
+            }
+            propertyMaps.get(namespace).put(flagName, value);
+        }
+
+        HashSet<Properties> result = new HashSet<>();
+        for (Map.Entry<String, Map<String, String>> entry : propertyMaps.entrySet()) {
+            result.add(new Properties(entry.getKey(), entry.getValue()));
+        }
+        return result;
     }
 
     /**
@@ -1237,6 +1315,82 @@ public final class DeviceConfig {
             Log.e(TAG, "Parsing float failed for " + namespace + ":" + name);
             return defaultValue;
         }
+    }
+
+    /**
+     * Set flag {@code namespace/name} to {@code value}, and ignores server-updates for this flag.
+     *
+     * Can still be called even if there is no underlying value set.
+     *
+     * Returns {@code true} if successful, or {@code false} if the storage implementation throws
+     * errors.
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(WRITE_DEVICE_CONFIG)
+    public static boolean setLocalOverride(@NonNull String namespace, @NonNull String name,
+        @NonNull String value) {
+        return setProperty(DEVICE_CONFIG_OVERRIDES_NAMESPACE, namespace + ":" + name, value, false);
+    }
+
+    /**
+     * Clear all local sticky overrides.
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(WRITE_DEVICE_CONFIG)
+    public static void clearAllLocalOverrides() {
+        Properties overrides = getProperties(DEVICE_CONFIG_OVERRIDES_NAMESPACE);
+        for (String overrideName : overrides.getKeyset()) {
+            deleteProperty(DEVICE_CONFIG_OVERRIDES_NAMESPACE, overrideName);
+        }
+    }
+
+    /**
+     * Clear local sticky override for flag {@code namespace/name}.
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(WRITE_DEVICE_CONFIG)
+    public static void clearLocalOverride(@NonNull String namespace,
+        @NonNull String name) {
+        deleteProperty(DEVICE_CONFIG_OVERRIDES_NAMESPACE, namespace + ":" + name);
+    }
+
+    /**
+     * Return a map containing all flags that have been overridden.
+     *
+     * The keys of the outer map are namespaces. They keys of the inner maps are
+     * flag names. The values of the inner maps are the underlying flag values
+     * (not to be confused with their overridden values).
+     *
+     * @hide
+     */
+    @NonNull
+    @SystemApi
+    public static Map<String, Map<String, String>> getUnderlyingValuesForOverriddenFlags() {
+        Properties overrides = getProperties(DEVICE_CONFIG_OVERRIDES_NAMESPACE);
+        HashMap<String, Map<String, String>> result = new HashMap<>();
+        for (Map.Entry<String, String> entry : overrides.getPropertyValues().entrySet()) {
+            String[] namespaceAndFlag = entry.getKey().split(":");
+            String namespace = namespaceAndFlag[0];
+            String flag = namespaceAndFlag[1];
+
+            String actualValue =
+                    getPropertiesWithoutOverrides(namespace, flag)
+                    .getString(flag, null);
+            if (result.get(namespace) != null) {
+                result.get(namespace).put(flag, actualValue);
+            } else {
+                HashMap<String, String> innerMap = new HashMap<>();
+                innerMap.put(flag, actualValue);
+                result.put(namespace, innerMap);
+            }
+        }
+        return result;
     }
 
     /**

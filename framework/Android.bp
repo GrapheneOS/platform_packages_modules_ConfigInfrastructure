@@ -35,4 +35,8 @@ java_sdk_library {
     impl_library_visibility: [
         "//packages/modules/ConfigInfrastructure:__subpackages__"
     ],
+    static_libs: [
+        "modules-utils-build",
+    ],
+    jarjar_rules: "jarjar-rules.txt",
 }

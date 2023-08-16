@@ -17,13 +17,18 @@
 package android.provider;
 
 import android.content.ContentResolver;
+import android.content.pm.PackageManager;
 import android.database.ContentObserver;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.concurrent.Executor;
+import java.util.HashMap;
+import java.util.Map;
+
 
 /**
  * TODO: want to change the package of this class
@@ -31,6 +36,11 @@ import java.util.concurrent.Executor;
  * @hide
  */
 public class SettingsConfigDataStore implements DeviceConfigDataStore {
+    @Override
+    public @NonNull Map<String, String> getAllProperties() {
+        return Settings.Config.getAllStrings();
+    }
+
     @Override
     public @NonNull DeviceConfig.Properties getProperties(@NonNull String namespace,
             @NonNull String... names) {
