@@ -1505,7 +1505,6 @@ final class WritableFlags {
                 "privacy/safety_label_changes_job_interval_millis",
                 "privacy/sc_accessibility_listener_enabled",
                 "privacy/sc_accessibility_source_enabled",
-                "privacy/warning_banner_enabled",
                 "profcollect_native_boot/enable",
                 "remote_key_provisioning_native/enable_rkpd",
                 "rollback/containing",
