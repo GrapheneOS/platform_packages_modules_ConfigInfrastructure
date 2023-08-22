@@ -1093,7 +1093,6 @@ public final class DeviceConfig {
      * @hide
      */
     @SystemApi
-    @RequiresPermission(READ_DEVICE_CONFIG)
     @Nullable
     public static String getProperty(@NonNull String namespace, @NonNull String name) {
         // Fetch all properties for the namespace at once and cache them in the local process, so we
@@ -1158,7 +1157,6 @@ public final class DeviceConfig {
      * @hide
      */
     @SystemApi
-    @RequiresPermission(READ_DEVICE_CONFIG)
     public static boolean getBoolean(@NonNull String namespace, @NonNull String name,
             boolean defaultValue) {
         String value = getProperty(namespace, name);
