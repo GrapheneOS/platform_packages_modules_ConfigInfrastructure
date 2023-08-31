@@ -1475,7 +1475,6 @@ final class WritableFlags {
                 "privacy/param",
                 "privacy/param",
                 "privacy/permission_rationale_enabled",
-                "privacy/permissions_hub_enabled",
                 "privacy/permissions_hub_subattribution_enabled",
                 "privacy/placeholder_safety_label_updates_enabled",
                 "privacy/privacy_attribution_tag_full_log_enabled",
