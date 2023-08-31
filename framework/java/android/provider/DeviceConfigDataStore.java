@@ -24,11 +24,13 @@ import android.database.ContentObserver;
 import android.provider.DeviceConfig;
 
 import java.util.concurrent.Executor;
+import java.util.Map;
 
 /**
  *  @hide
  */
 public interface DeviceConfigDataStore {
+    @NonNull Map<String, String> getAllProperties();
 
     @NonNull DeviceConfig.Properties getProperties(@NonNull String namespace, @NonNull String ... names);
 
