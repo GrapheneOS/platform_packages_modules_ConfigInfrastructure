@@ -1463,7 +1463,6 @@ final class WritableFlags {
                 "privacy/location_access_check_enabled",
                 "privacy/location_access_check_delay_millis",
                 "privacy/location_access_check_periodic_interval_millis",
-                "privacy/location_accuracy_enabled",
                 "privacy/location_indicators_enabled",
                 "privacy/location_indicators_show_system",
                 "privacy/location_indicators_small_enabled",
