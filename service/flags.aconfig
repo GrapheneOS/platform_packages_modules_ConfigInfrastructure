@@ -6,3 +6,9 @@ flag {
     description: "If enabled, a notification appears when flags are staged to be applied on reboot."
     bug: "296462695"
 }
+flag {
+  name: "enable_unattended_reboot"
+  namespace: "core_experiments_team_internal"
+  description: "This flag controls enabling the unattended reboot feature for applying flags."
+  bug: "297502146"
+}
