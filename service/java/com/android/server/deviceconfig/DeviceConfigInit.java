@@ -3,13 +3,18 @@ package com.android.server.deviceconfig;
 import java.io.FileDescriptor;
 import java.io.IOException;
 
+import android.content.Intent;
 import android.annotation.NonNull;
 import android.annotation.SystemApi;
 import android.content.Context;
+import android.os.AsyncTask;
 import android.os.Binder;
 import android.provider.DeviceConfig;
 import android.provider.DeviceConfigManager;
 import android.provider.UpdatableDeviceConfigServiceReadiness;
+import android.content.ServiceConnection;
+import android.os.IBinder;
+import android.content.ComponentName;
 
 import android.provider.aidl.IDeviceConfigManager;
 import android.util.Slog;
@@ -18,10 +23,13 @@ import com.android.modules.utils.build.SdkLevel;
 
 import com.android.server.SystemService;
 
+import static com.android.server.deviceconfig.Flags.enableRebootNotification;
+
 /** @hide */
 @SystemApi(client = SystemApi.Client.SYSTEM_SERVER)
 public class DeviceConfigInit {
     private static final String TAG = "DEVICE_CONFIG_INIT";
+    private static final String STAGED_NAMESPACE = "staged";
 
     private DeviceConfigInit() {
         // do not instantiate
@@ -50,7 +58,12 @@ public class DeviceConfigInit {
          */
         @Override
         public void onStart() {
-            // no op
+            if (enableRebootNotification()) {
+                DeviceConfig.addOnPropertiesChangedListener(
+                    STAGED_NAMESPACE,
+                    AsyncTask.THREAD_POOL_EXECUTOR,
+                    new BootNotificationCreator(getContext().getApplicationContext()));
+            }
         }
 
         private void applyBootstrapValues() {
