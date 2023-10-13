@@ -1,6 +1,4 @@
 // Signature format: 2.0
-// - add-additional-overrides=no
-// - migrating=Migration in progress see b/299366704
 package com.android.server.deviceconfig {
 
   public class DeviceConfigInit {
@@ -8,6 +6,7 @@ package com.android.server.deviceconfig {
 
   public static class DeviceConfigInit.Lifecycle extends com.android.server.SystemService {
     ctor public DeviceConfigInit.Lifecycle(@NonNull android.content.Context);
+    method public void onStart();
   }
 
 }
