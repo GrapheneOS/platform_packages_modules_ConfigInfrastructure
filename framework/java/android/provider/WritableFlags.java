@@ -1460,7 +1460,6 @@ final class WritableFlags {
                 "privacy/camera_mic_icons_enabled",
                 "privacy/camera_toggle_enabled",
                 "privacy/data_sharing_update_period_millis",
-                "privacy/location_access_check_enabled",
                 "privacy/location_access_check_delay_millis",
                 "privacy/location_access_check_periodic_interval_millis",
                 "privacy/location_indicators_enabled",
