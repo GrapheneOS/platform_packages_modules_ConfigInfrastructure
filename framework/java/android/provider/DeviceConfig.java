@@ -72,25 +72,6 @@ import android.os.IBinder;
 public final class DeviceConfig {
 
     /**
-     * Namespace where flags are staged to be applied on reboot.
-     *
-     * @hide
-     */
-    public static final String NAMESPACE_REBOOT_STAGING = "staged";
-
-    /**
-     * Delimiter for flags in the {@code staged} namespace.
-     *
-     * Flags in this namespace will be applied on reboot. Each flag
-     * in this namespace follows the format {@code namespace*flag},
-     * where {@code namespace} is the namespace the flag will be written
-     * to on reboot, and {@code flag} is the name of the flag.
-     *
-     * @hide
-     */
-    public static final String NAMESPACE_REBOOT_STAGING_DELIMITER = "*";
-
-    /**
      * The name of the service that provides the logic to these APIs
      *
      * @hide

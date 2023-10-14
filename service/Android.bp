@@ -33,9 +33,11 @@ java_sdk_library {
     static_libs: [
         "modules-utils-build",
         "modules-utils-shell-command-handler",
+        "device_config_reboot_flags_java_lib",
     ],
     libs: [
         "framework-configinfrastructure.impl",
+        "DeviceConfigServiceResources",
     ],
     min_sdk_version: "UpsideDownCake",
     sdk_version: "system_server_current",
@@ -43,4 +45,21 @@ java_sdk_library {
     impl_library_visibility: [
         "//packages/modules/ConfigInfrastructure/service/javatests",
     ],
+}
+
+aconfig_declarations {
+    name: "device_config_reboot_flags",
+    package: "com.android.server.deviceconfig",
+    srcs: [
+      "flags.aconfig",
+    ],
+}
+
+java_aconfig_library {
+    name: "device_config_reboot_flags_java_lib",
+    min_sdk_version: "UpsideDownCake",
+    apex_available: [
+        "com.android.configinfrastructure",
+    ],
+    aconfig_declarations: "device_config_reboot_flags",
 }

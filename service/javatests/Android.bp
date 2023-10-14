@@ -40,6 +40,7 @@ android_test {
         "modules-utils-build",
         "service-configinfrastructure.impl",
         "truth-prebuilt",
+        "mockito-target-minus-junit4",
     ],
     libs: [
         "android.test.base",

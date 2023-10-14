@@ -1,0 +1,8 @@
+package: "com.android.server.deviceconfig"
+
+flag {
+    name: "enable_reboot_notification"
+    namespace: "core_experiments_team_internal"
+    description: "If enabled, a notification appears when flags are staged to be applied on reboot."
+    bug: "296462695"
+}
