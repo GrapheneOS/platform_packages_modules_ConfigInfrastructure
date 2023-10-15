@@ -26,20 +26,20 @@ android_test {
     manifest: "AndroidManifest.xml",
     test_config: "AndroidTest.xml",
     data: [
-        ":service-configinfrastructure-unitttests-bootstrap-files"
+        ":service-configinfrastructure-unitttests-bootstrap-files",
     ],
     srcs: [
         "src/**/*.java",
     ],
     test_suites: [
         "mts-configinfrastructure",
-        "general-tests"
+        "general-tests",
     ],
     static_libs: [
         "androidx.test.runner",
         "modules-utils-build",
         "service-configinfrastructure.impl",
-        "truth-prebuilt",
+        "truth",
         "mockito-target-minus-junit4",
     ],
     libs: [
