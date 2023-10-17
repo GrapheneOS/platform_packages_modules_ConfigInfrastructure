@@ -3,5 +3,7 @@
   <!-- Title text for a notification that instructs the user to reboot to apply new server flags to the device [CHAR LIMIT=NONE] -->
   <string name="boot_notification_title">New flags available</string>
   <!-- Content text for a notification that instructs the user to reboot to apply new server flags to the device [CHAR LIMIT=NONE] -->
-  <string name="boot_notification_content">Tap to reboot and apply new trunkfood flag values</string>
+  <string name="boot_notification_content">Your device has new trunkfood flags available. A restart is required to apply them.</string>
+  <!-- Action text for a button that instructs the user to reboot to apply new server flags to the device [CHAR LIMIT=NONE] -->
+  <string name="boot_notification_action_text">Tap to reboot</string>
 </resources>

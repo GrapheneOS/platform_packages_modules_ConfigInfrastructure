@@ -3,6 +3,7 @@ package com.android.server.deviceconfig;
 import android.annotation.NonNull;
 import android.app.AlarmManager;
 import android.app.Notification;
+import android.app.Notification.Action;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -114,11 +115,15 @@ class BootNotificationCreator implements OnPropertiesChangedListener {
 
             try {
                 Context resourcesContext = context.createPackageContext(RESOURCES_PACKAGE, 0);
+                Action action = new Action.Builder(
+                    Icon.createWithResource(resourcesContext, R.drawable.ic_restart),
+                    resourcesContext.getString(R.string.boot_notification_action_text),
+                    pendingIntent).build();
                 Notification notification = new Notification.Builder(context, CHANNEL_ID)
                     .setContentText(resourcesContext.getString(R.string.boot_notification_content))
                     .setContentTitle(resourcesContext.getString(R.string.boot_notification_title))
                     .setSmallIcon(Icon.createWithResource(resourcesContext, R.drawable.ic_flag))
-                    .setContentIntent(pendingIntent)
+                    .addAction(action)
                     .build();
                 notificationManager.notify(NOTIFICATION_ID, notification);
             } catch (NameNotFoundException e) {
