@@ -36,11 +36,14 @@ android_test {
         "general-tests",
     ],
     static_libs: [
+        "androidx.test.rules",
         "androidx.test.runner",
+        "androidx.annotation_annotation",
         "modules-utils-build",
         "service-configinfrastructure.impl",
-        "truth",
+        "frameworks-base-testutils",
         "mockito-target-minus-junit4",
+        "truth",
     ],
     libs: [
         "android.test.base",
