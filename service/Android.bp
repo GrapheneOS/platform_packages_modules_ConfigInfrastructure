@@ -26,7 +26,6 @@ java_sdk_library {
     permitted_packages: [
         "android.provider",
         "com.android.server.deviceconfig",
-        //"com.google.protobuf",
     ],
     apex_available: [
         "com.android.configinfrastructure",
@@ -35,7 +34,6 @@ java_sdk_library {
         "modules-utils-build",
         "modules-utils-shell-command-handler",
         "device_config_reboot_flags_java_lib",
-        "libaconfig_java_proto_lite"
     ],
     libs: [
         "framework-configinfrastructure.impl",

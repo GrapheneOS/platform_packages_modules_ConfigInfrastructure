@@ -22,14 +22,11 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.io.IOException;
-import java.util.Map;
-import java.util.Set;
 
 import static android.app.NotificationManager.IMPORTANCE_HIGH;
 
 /**
- * Creates notifications when aconfig flags are staged on the device.
+ * Creates notifications when flags are staged on the device.
  *
  * The notification alerts the user to reboot, to apply the staged flags.
  *
@@ -58,15 +55,11 @@ class BootNotificationCreator implements OnPropertiesChangedListener {
 
     private Context context;
 
-    private static final int REBOOT_HOUR = 10;
-    private static final int REBOOT_MINUTE = 0;
+    private static final int REBOOT_HOUR = 18;
+    private static final int REBOOT_MINUTE = 2;
 
-    private Map<String, Set<String>> aconfigFlags;
-
-    public BootNotificationCreator(@NonNull Context context,
-                                   Map<String, Set<String>> aconfigFlags) {
+    public BootNotificationCreator(@NonNull Context context) {
         this.context = context;
-        this.aconfigFlags = aconfigFlags;
 
         this.context.registerReceiver(
             new HardRebootBroadcastReceiver(),
@@ -80,10 +73,6 @@ class BootNotificationCreator implements OnPropertiesChangedListener {
 
     @Override
     public void onPropertiesChanged(Properties properties) {
-        if (!containsAconfigChanges(properties)) {
-            return;
-        }
-
         if (!tryInitializeDependenciesIfNeeded()) {
             Slog.i(TAG, "not posting notif; service dependencies not ready");
             return;
@@ -112,25 +101,6 @@ class BootNotificationCreator implements OnPropertiesChangedListener {
 
         alarmManager.setExact(
             AlarmManager.RTC_WAKEUP, scheduledPostTimeLong, pendingIntent);
-    }
-
-    private boolean containsAconfigChanges(Properties properties) {
-        for (String namespaceAndFlag : properties.getKeyset()) {
-            int firstStarIndex = namespaceAndFlag.indexOf("*");
-            if (firstStarIndex == -1 || firstStarIndex == 0
-                || firstStarIndex == namespaceAndFlag.length() - 1) {
-                Slog.w(TAG, "detected malformed staged flag: " + namespaceAndFlag);
-                continue;
-            }
-
-            String namespace = namespaceAndFlag.substring(0, firstStarIndex);
-            String flag = namespaceAndFlag.substring(firstStarIndex + 1);
-
-            if (aconfigFlags.get(namespace) != null && aconfigFlags.get(namespace).contains(flag)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private class PostNotificationBroadcastReceiver extends BroadcastReceiver {
