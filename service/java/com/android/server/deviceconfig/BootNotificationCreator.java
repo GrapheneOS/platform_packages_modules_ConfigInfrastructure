@@ -24,6 +24,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 import static android.app.NotificationManager.IMPORTANCE_HIGH;
+import static java.time.temporal.ChronoUnit.SECONDS;
 
 /**
  * Creates notifications when flags are staged on the device.
@@ -55,8 +56,11 @@ class BootNotificationCreator implements OnPropertiesChangedListener {
 
     private Context context;
 
-    private static final int REBOOT_HOUR = 18;
-    private static final int REBOOT_MINUTE = 2;
+    private static final int REBOOT_HOUR = 10;
+    private static final int REBOOT_MINUTE = 0;
+    private static final int MIN_SECONDS_TO_SHOW_NOTIF = 86400;
+
+    private LocalDateTime lastReboot;
 
     public BootNotificationCreator(@NonNull Context context) {
         this.context = context;
@@ -69,6 +73,8 @@ class BootNotificationCreator implements OnPropertiesChangedListener {
             new PostNotificationBroadcastReceiver(),
             new IntentFilter(ACTION_POST_NOTIFICATION),
             Context.RECEIVER_EXPORTED);
+
+        this.lastReboot = LocalDateTime.now(ZoneId.systemDefault());
     }
 
     @Override
@@ -106,6 +112,14 @@ class BootNotificationCreator implements OnPropertiesChangedListener {
     private class PostNotificationBroadcastReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
+            LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
+
+            if (lastReboot.until(now, SECONDS) < MIN_SECONDS_TO_SHOW_NOTIF) {
+                Slog.w(TAG, "not enough time passed, punting");
+                tryAgainIn24Hours(now);
+                return;
+            }
+
             PendingIntent pendingIntent =
                 PendingIntent.getBroadcast(
                     context,
@@ -129,6 +143,24 @@ class BootNotificationCreator implements OnPropertiesChangedListener {
             } catch (NameNotFoundException e) {
                 Slog.e(TAG, "failed to post boot notification", e);
             }
+        }
+
+        private void tryAgainIn24Hours(LocalDateTime currentTime) {
+            PendingIntent pendingIntent =
+                PendingIntent.getBroadcast(
+                    context,
+                    /* requestCode= */ 1,
+                    new Intent(ACTION_POST_NOTIFICATION),
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+            LocalDateTime postTime =
+                currentTime.toLocalDate().atTime(REBOOT_HOUR, REBOOT_MINUTE).plusDays(1);
+            long scheduledPostTimeLong = postTime
+                .atZone(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli();
+            alarmManager.setExact(
+                AlarmManager.RTC_WAKEUP, scheduledPostTimeLong, pendingIntent);
         }
     }
 
