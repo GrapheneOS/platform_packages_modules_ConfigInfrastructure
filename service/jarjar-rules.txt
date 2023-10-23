@@ -1,1 +1,3 @@
 rule com.android.modules.utils.** com.android.server.deviceconfig.internal.modules.utils.@1
+rule com.google.protobuf.** com.android.server.deviceconfig.internal.protobuf.@1
+rule android.aconfig.** com.android.server.deviceconfig.internal.aconfig.@1
