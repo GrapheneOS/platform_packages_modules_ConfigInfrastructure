@@ -35,7 +35,7 @@ final class UnattendedRebootManager {
 
   private static final String TAG = "UnattendedRebootManager";
 
-  static final String REBOOT_REASON = "deviceconfig";
+  static final String REBOOT_REASON = "unattended,flaginfra";
 
   @VisibleForTesting
   static final String ACTION_RESUME_ON_REBOOT_LSKF_CAPTURED =

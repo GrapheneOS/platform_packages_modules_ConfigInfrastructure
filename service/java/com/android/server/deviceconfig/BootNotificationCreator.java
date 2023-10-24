@@ -22,11 +22,15 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.io.IOException;
+import java.util.Map;
+import java.util.Set;
 
 import static android.app.NotificationManager.IMPORTANCE_HIGH;
+import static java.time.temporal.ChronoUnit.SECONDS;
 
 /**
- * Creates notifications when flags are staged on the device.
+ * Creates notifications when aconfig flags are staged on the device.
  *
  * The notification alerts the user to reboot, to apply the staged flags.
  *
@@ -55,11 +59,18 @@ class BootNotificationCreator implements OnPropertiesChangedListener {
 
     private Context context;
 
-    private static final int REBOOT_HOUR = 18;
-    private static final int REBOOT_MINUTE = 2;
+    private static final int REBOOT_HOUR = 10;
+    private static final int REBOOT_MINUTE = 0;
+    private static final int MIN_SECONDS_TO_SHOW_NOTIF = 86400;
 
-    public BootNotificationCreator(@NonNull Context context) {
+    private LocalDateTime lastReboot;
+
+    private Map<String, Set<String>> aconfigFlags;
+
+    public BootNotificationCreator(@NonNull Context context,
+                                   Map<String, Set<String>> aconfigFlags) {
         this.context = context;
+        this.aconfigFlags = aconfigFlags;
 
         this.context.registerReceiver(
             new HardRebootBroadcastReceiver(),
@@ -69,10 +80,16 @@ class BootNotificationCreator implements OnPropertiesChangedListener {
             new PostNotificationBroadcastReceiver(),
             new IntentFilter(ACTION_POST_NOTIFICATION),
             Context.RECEIVER_EXPORTED);
+
+        this.lastReboot = LocalDateTime.now(ZoneId.systemDefault());
     }
 
     @Override
     public void onPropertiesChanged(Properties properties) {
+        if (!containsAconfigChanges(properties)) {
+            return;
+        }
+
         if (!tryInitializeDependenciesIfNeeded()) {
             Slog.i(TAG, "not posting notif; service dependencies not ready");
             return;
@@ -103,9 +120,36 @@ class BootNotificationCreator implements OnPropertiesChangedListener {
             AlarmManager.RTC_WAKEUP, scheduledPostTimeLong, pendingIntent);
     }
 
+    private boolean containsAconfigChanges(Properties properties) {
+        for (String namespaceAndFlag : properties.getKeyset()) {
+            int firstStarIndex = namespaceAndFlag.indexOf("*");
+            if (firstStarIndex == -1 || firstStarIndex == 0
+                || firstStarIndex == namespaceAndFlag.length() - 1) {
+                Slog.w(TAG, "detected malformed staged flag: " + namespaceAndFlag);
+                continue;
+            }
+
+            String namespace = namespaceAndFlag.substring(0, firstStarIndex);
+            String flag = namespaceAndFlag.substring(firstStarIndex + 1);
+
+            if (aconfigFlags.get(namespace) != null && aconfigFlags.get(namespace).contains(flag)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private class PostNotificationBroadcastReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
+            LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
+
+            if (lastReboot.until(now, SECONDS) < MIN_SECONDS_TO_SHOW_NOTIF) {
+                Slog.w(TAG, "not enough time passed, punting");
+                tryAgainIn24Hours(now);
+                return;
+            }
+
             PendingIntent pendingIntent =
                 PendingIntent.getBroadcast(
                     context,
@@ -129,6 +173,24 @@ class BootNotificationCreator implements OnPropertiesChangedListener {
             } catch (NameNotFoundException e) {
                 Slog.e(TAG, "failed to post boot notification", e);
             }
+        }
+
+        private void tryAgainIn24Hours(LocalDateTime currentTime) {
+            PendingIntent pendingIntent =
+                PendingIntent.getBroadcast(
+                    context,
+                    /* requestCode= */ 1,
+                    new Intent(ACTION_POST_NOTIFICATION),
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+            LocalDateTime postTime =
+                currentTime.toLocalDate().atTime(REBOOT_HOUR, REBOOT_MINUTE).plusDays(1);
+            long scheduledPostTimeLong = postTime
+                .atZone(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli();
+            alarmManager.setExact(
+                AlarmManager.RTC_WAKEUP, scheduledPostTimeLong, pendingIntent);
         }
     }
 

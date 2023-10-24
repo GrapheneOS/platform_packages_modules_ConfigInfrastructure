@@ -16,33 +16,33 @@
 
 package com.android.server.deviceconfig;
 
-import static androidx.test.platform.app.InstrumentationRegistry.getInstrumentation;
+import android.content.Context;
+import android.app.AlarmManager;
+import android.content.ContextWrapper;
+import android.provider.DeviceConfig;
+import android.provider.DeviceConfig.Properties;
+import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.runner.AndroidJUnit4;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import org.junit.Test;
+import org.junit.Before;
+import org.junit.runner.RunWith;
+import org.mockito.Mockito;
 
+import static androidx.test.platform.app.InstrumentationRegistry.getInstrumentation;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyLong;
-import android.content.Context;
-import java.util.HashMap;
-
-import android.content.ContextWrapper;
-import org.mockito.Mockito;
-import android.provider.DeviceConfig;
-import android.provider.DeviceConfig.Properties;
-
-import androidx.test.platform.app.InstrumentationRegistry;
-import androidx.test.runner.AndroidJUnit4;
-import android.app.AlarmManager;
-
-import java.io.IOException;
-
-import org.junit.Test;
-import org.junit.Before;
-import org.junit.runner.RunWith;
 
 @RunWith(AndroidJUnit4.class)
 public class BootNotificationCreatorTest {
@@ -64,17 +64,33 @@ public class BootNotificationCreatorTest {
                 }
             }
         };
-        bootNotificationCreator = new BootNotificationCreator(mockContext);
+
+        Map<String, Set<String>> testAconfigFlags = new HashMap<>();
+        testAconfigFlags.put("test", new HashSet<>());
+        testAconfigFlags.get("test").add("flag");
+
+        bootNotificationCreator = new BootNotificationCreator(mockContext, testAconfigFlags);
     }
 
     @Test
-    public void testNotificationScheduledWhenFlagStaged() {
+    public void testNotificationScheduledWhenAconfigFlagStaged() {
         HashMap<String, String> flags = new HashMap();
-        flags.put("test", "flag");
+        flags.put("test*flag", "value");
         Properties properties = new Properties("staged", flags);
 
         bootNotificationCreator.onPropertiesChanged(properties);
 
         Mockito.verify(mockAlarmManager).setExact(anyInt(), anyLong(), any());
+    }
+
+    @Test
+    public void testNotificationNotScheduledForNonAconfigFlag() {
+        HashMap<String, String> flags = new HashMap();
+        flags.put("not_aconfig*flag", "value");
+        Properties properties = new Properties("staged", flags);
+
+        bootNotificationCreator.onPropertiesChanged(properties);
+
+        Mockito.verify(mockAlarmManager, times(0)).setExact(anyInt(), anyLong(), any());
     }
 }
