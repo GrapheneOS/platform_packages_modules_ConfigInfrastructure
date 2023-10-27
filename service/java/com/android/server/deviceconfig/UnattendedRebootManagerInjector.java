@@ -23,10 +23,15 @@ interface UnattendedRebootManagerInjector {
   /** Reboot time injectors. */
   int getRebootStartTime();
 
+  int getRebootEndTime();
+
   int getRebootFrequency();
 
   /** Reboot Alarm injector. */
   void setRebootAlarm(Context context, long rebootTimeMillis);
+
+  /** Connectivity injector. */
+  void triggerRebootOnNetworkAvailable(Context context);
 
   /** {@link RecoverySystem} methods injectors. */
   int rebootAndApply(@NonNull Context context, @NonNull String reason, boolean slotSwitch)

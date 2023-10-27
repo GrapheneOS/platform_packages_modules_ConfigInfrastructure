@@ -10,6 +10,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.IntentSender;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
 import android.os.PowerManager;
 import android.os.RecoverySystem;
 import android.util.Log;
@@ -29,7 +33,8 @@ import java.time.ZoneId;
  * @hide
  */
 final class UnattendedRebootManager {
-  private static final int DEFAULT_REBOOT_WINDOW_START_TIME_HOUR = 2;
+  private static final int DEFAULT_REBOOT_WINDOW_START_TIME_HOUR = 1;
+  private static final int DEFAULT_REBOOT_WINDOW_END_TIME_HOUR = 5;
 
   private static final int DEFAULT_REBOOT_FREQUENCY_DAYS = 2;
 
@@ -67,20 +72,28 @@ final class UnattendedRebootManager {
       return DEFAULT_REBOOT_WINDOW_START_TIME_HOUR;
     }
 
+    public int getRebootEndTime() {
+      return DEFAULT_REBOOT_WINDOW_END_TIME_HOUR;
+    }
+
     public int getRebootFrequency() {
       return DEFAULT_REBOOT_FREQUENCY_DAYS;
     }
 
     public void setRebootAlarm(Context context, long rebootTimeMillis) {
       AlarmManager alarmManager = context.getSystemService(AlarmManager.class);
-      PendingIntent pendingIntent =
-          PendingIntent.getBroadcast(
-              context,
-              /* requestCode= */ 0,
-              new Intent(ACTION_TRIGGER_REBOOT),
-              PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
+      alarmManager.setExact(
+          AlarmManager.RTC_WAKEUP, rebootTimeMillis, createTriggerRebootPendingIntent(context));
+    }
 
-      alarmManager.setExact(AlarmManager.RTC_WAKEUP, rebootTimeMillis, pendingIntent);
+    public void triggerRebootOnNetworkAvailable(Context context) {
+      final ConnectivityManager connectivityManager =
+          context.getSystemService(ConnectivityManager.class);
+      NetworkRequest request =
+          new NetworkRequest.Builder()
+              .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+              .build();
+      connectivityManager.requestNetwork(request, createTriggerRebootPendingIntent(context));
     }
 
     public int rebootAndApply(@NonNull Context context, @NonNull String reason, boolean slotSwitch)
@@ -101,6 +114,14 @@ final class UnattendedRebootManager {
     public void regularReboot(Context context) {
       PowerManager powerManager = context.getSystemService(PowerManager.class);
       powerManager.reboot(REBOOT_REASON);
+    }
+
+    private static PendingIntent createTriggerRebootPendingIntent(Context context) {
+      return PendingIntent.getBroadcast(
+          context,
+          /* requestCode= */ 0,
+          new Intent(ACTION_TRIGGER_REBOOT),
+          PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
     }
   }
 
@@ -178,21 +199,52 @@ final class UnattendedRebootManager {
 
   @VisibleForTesting
   void tryRebootOrSchedule() {
-    // TODO(b/305259443): check network is connected
-    // Check if RoR is supported.
+    Log.v(TAG, "Attempting unattended reboot");
+
+    // Is RoR is supported?
     if (!isDeviceSecure(mContext)) {
       Log.v(TAG, "Device is not secure. Proceed with regular reboot");
       mInjector.regularReboot(mContext);
-    } else if (isPreparedForUnattendedReboot()) {
-      try {
-        mInjector.rebootAndApply(mContext, REBOOT_REASON, /* slotSwitch= */ false);
-      } catch (IOException e) {
-        Log.e(TAG, e.getLocalizedMessage());
-      }
-      // If reboot is successful, should not reach this.
-    } else {
-      // Lskf is not captured, try again the following day
+      return;
+    }
+    // Is RoR prepared?
+    if (!isPreparedForUnattendedReboot()) {
+      Log.v(TAG, "Lskf is not captured, reschedule reboot.");
       prepareUnattendedReboot();
+      scheduleReboot();
+      return;
+    }
+    // Is network connected?
+    // TODO(b/305259443): Use after-boot network connectivity projection
+    if (!isNetworkConnected(mContext)) {
+      Log.i(TAG, "Network is not connected, schedule reboot for another time.");
+      mInjector.triggerRebootOnNetworkAvailable(mContext);
+      return;
+    }
+    // Is current time between reboot window?
+    int currentHour =
+        Instant.ofEpochMilli(mInjector.now())
+            .atZone(mInjector.zoneId())
+            .toLocalDateTime()
+            .getHour();
+    if (currentHour < mInjector.getRebootStartTime()
+        && currentHour >= mInjector.getRebootEndTime()) {
+      Log.v(TAG, "Reboot requested outside of reboot window, reschedule.");
+      prepareUnattendedReboot();
+      scheduleReboot();
+      return;
+    }
+
+    // Proceed with RoR.
+    try {
+      int success = mInjector.rebootAndApply(mContext, REBOOT_REASON, /* slotSwitch= */ false);
+      if (success != 0) {
+        // If reboot is not successful, reschedule.
+        Log.w(TAG, "Unattended reboot failed, reschedule.");
+        scheduleReboot();
+      }
+    } catch (IOException e) {
+      Log.e(TAG, e.getLocalizedMessage());
       scheduleReboot();
     }
   }
@@ -219,5 +271,20 @@ final class UnattendedRebootManager {
       return true;
     }
     return keyguardManager.isDeviceSecure();
+  }
+
+  private static boolean isNetworkConnected(Context context) {
+    final ConnectivityManager connectivityManager =
+        context.getSystemService(ConnectivityManager.class);
+    if (connectivityManager == null) {
+      Log.w(TAG, "ConnectivityManager is null");
+      return false;
+    }
+    Network activeNetwork = connectivityManager.getActiveNetwork();
+    NetworkCapabilities networkCapabilities =
+        connectivityManager.getNetworkCapabilities(activeNetwork);
+    return networkCapabilities != null
+        && networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        && networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
   }
 }

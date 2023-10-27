@@ -6,6 +6,7 @@ import static com.android.server.deviceconfig.UnattendedRebootManager.ACTION_TRI
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -18,10 +19,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.IntentSender;
+import android.net.ConnectivityManager;
+import android.net.NetworkCapabilities;
 import android.util.Log;
 
 import androidx.test.filters.SmallTest;
-import java.io.IOException;
 import java.time.ZoneId;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -32,22 +34,27 @@ import org.junit.Test;
 @SmallTest
 public class UnattendedRebootManagerTest {
 
+  private static final String TAG = "UnattendedRebootManagerTest";
+
   private static final int REBOOT_FREQUENCY = 1;
-  private static final int REBOOT_HOUR = 2;
+  private static final int REBOOT_START_HOUR = 2;
+  private static final int REBOOT_END_HOUR = 3;
+
   private static final long CURRENT_TIME = 1696452549304L; // 2023-10-04T13:49:09.304
   private static final long REBOOT_TIME = 1696496400000L; // 2023-10-05T02:00:00
+  private static final long RESCHEDULED_REBOOT_TIME = 1696582800000L; // 2023-10-06T02:00:00
+  private static final long OUTSIDE_WINDOW_REBOOT_TIME = 1696583400000L; // 2023-10-06T03:10:00
 
   private Context mContext;
-
   private KeyguardManager mKeyguardManager;
-
-  FakeInjector mFakeInjector;
-
+  private ConnectivityManager mConnectivityManager;
+  private FakeInjector mFakeInjector;
   private UnattendedRebootManager mRebootManager;
 
   @Before
   public void setUp() throws Exception {
     mKeyguardManager = mock(KeyguardManager.class);
+    mConnectivityManager = mock(ConnectivityManager.class);
 
     mContext =
         new ContextWrapper(getInstrumentation().getTargetContext()) {
@@ -55,6 +62,8 @@ public class UnattendedRebootManagerTest {
           public Object getSystemService(String name) {
             if (name.equals(Context.KEYGUARD_SERVICE)) {
               return mKeyguardManager;
+            } else if (name.equals(Context.CONNECTIVITY_SERVICE)) {
+              return mConnectivityManager;
             }
             return super.getSystemService(name);
           }
@@ -78,35 +87,111 @@ public class UnattendedRebootManagerTest {
 
   @Test
   public void scheduleReboot() {
+    Log.i(TAG, "scheduleReboot");
     when(mKeyguardManager.isDeviceSecure()).thenReturn(true);
+    when(mConnectivityManager.getNetworkCapabilities(any()))
+        .thenReturn(
+            new NetworkCapabilities.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                .build());
 
     mRebootManager.prepareUnattendedReboot();
     mRebootManager.scheduleReboot();
 
-    assertThat(mFakeInjector.getActualRebootTime()).isEqualTo(REBOOT_TIME);
     assertTrue(mFakeInjector.isRebootAndApplied());
     assertFalse(mFakeInjector.isRegularRebooted());
+    assertThat(mFakeInjector.getActualRebootTime()).isEqualTo(REBOOT_TIME);
   }
 
   @Test
   public void scheduleReboot_noPinLock() {
+    Log.i(TAG, "scheduleReboot_noPinLock");
     when(mKeyguardManager.isDeviceSecure()).thenReturn(false);
+    when(mConnectivityManager.getNetworkCapabilities(any()))
+        .thenReturn(
+            new NetworkCapabilities.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                .build());
 
     mRebootManager.prepareUnattendedReboot();
     mRebootManager.scheduleReboot();
 
-    assertThat(mFakeInjector.getActualRebootTime()).isEqualTo(REBOOT_TIME);
     assertFalse(mFakeInjector.isRebootAndApplied());
     assertTrue(mFakeInjector.isRegularRebooted());
+    assertThat(mFakeInjector.getActualRebootTime()).isEqualTo(REBOOT_TIME);
   }
 
   @Test
   public void scheduleReboot_noPreparation() {
+    Log.i(TAG, "scheduleReboot_noPreparation");
     when(mKeyguardManager.isDeviceSecure()).thenReturn(true);
+    when(mConnectivityManager.getNetworkCapabilities(any()))
+        .thenReturn(
+            new NetworkCapabilities.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                .build());
 
     mRebootManager.scheduleReboot();
 
+    assertFalse(mFakeInjector.isRebootAndApplied());
+    assertFalse(mFakeInjector.isRegularRebooted());
+    assertThat(mFakeInjector.getActualRebootTime()).isEqualTo(RESCHEDULED_REBOOT_TIME);
+  }
+
+  @Test
+  public void scheduleReboot_noInternet() {
+    Log.i(TAG, "scheduleReboot_noInternet");
+    when(mKeyguardManager.isDeviceSecure()).thenReturn(true);
+    when(mConnectivityManager.getNetworkCapabilities(any())).thenReturn(new NetworkCapabilities());
+
+    mRebootManager.prepareUnattendedReboot();
+    mRebootManager.scheduleReboot();
+
+    assertFalse(mFakeInjector.isRebootAndApplied());
+    assertFalse(mFakeInjector.isRegularRebooted());
     assertThat(mFakeInjector.getActualRebootTime()).isEqualTo(REBOOT_TIME);
+    assertTrue(mFakeInjector.isRequestedNetwork());
+  }
+
+  @Test
+  public void scheduleReboot_noInternetValidation() {
+    Log.i(TAG, "scheduleReboot_noInternetValidation");
+    when(mKeyguardManager.isDeviceSecure()).thenReturn(true);
+    when(mConnectivityManager.getNetworkCapabilities(any()))
+        .thenReturn(
+            new NetworkCapabilities.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build());
+
+    mRebootManager.prepareUnattendedReboot();
+    mRebootManager.scheduleReboot();
+
+    assertFalse(mFakeInjector.isRebootAndApplied());
+    assertFalse(mFakeInjector.isRegularRebooted());
+    assertThat(mFakeInjector.getActualRebootTime()).isEqualTo(REBOOT_TIME);
+    assertTrue(mFakeInjector.isRequestedNetwork());
+  }
+
+  @Test
+  public void tryRebootOrSchedule_outsideRebootWindow() {
+    Log.i(TAG, "scheduleReboot_internetOutsideRebootWindow");
+    when(mKeyguardManager.isDeviceSecure()).thenReturn(true);
+    when(mConnectivityManager.getNetworkCapabilities(any()))
+        .thenReturn(
+            new NetworkCapabilities.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                .build());
+    mFakeInjector.setNow(OUTSIDE_WINDOW_REBOOT_TIME);
+
+    mRebootManager.prepareUnattendedReboot();
+    // Simulating case when reboot is tried after network connection is established outside the
+    // reboot window.
+    mRebootManager.tryRebootOrSchedule();
+
     assertFalse(mFakeInjector.isRebootAndApplied());
     assertFalse(mFakeInjector.isRegularRebooted());
   }
@@ -116,27 +201,33 @@ public class UnattendedRebootManagerTest {
     private boolean isPreparedForUnattendedReboot;
     private boolean rebootAndApplied;
     private boolean regularRebooted;
+    private boolean requestedNetwork;
     private long actualRebootTime;
+    private boolean scheduledReboot;
 
-    FakeInjector() {}
+    private long nowMillis;
+
+    FakeInjector() {
+      nowMillis = CURRENT_TIME;
+    }
 
     @Override
     public void prepareForUnattendedUpdate(
-        @NonNull Context context, @NonNull String updateToken, @Nullable IntentSender intentSender)
-        throws IOException {
+        @NonNull Context context,
+        @NonNull String updateToken,
+        @Nullable IntentSender intentSender) {
       context.sendBroadcast(new Intent(ACTION_RESUME_ON_REBOOT_LSKF_CAPTURED));
       isPreparedForUnattendedReboot = true;
     }
 
     @Override
-    public boolean isPreparedForUnattendedUpdate(@NonNull Context context) throws IOException {
+    public boolean isPreparedForUnattendedUpdate(@NonNull Context context) {
       return isPreparedForUnattendedReboot;
     }
 
     @Override
     public int rebootAndApply(
         @NonNull Context context, @NonNull String reason, boolean slotSwitch) {
-      Log.i("UnattendedRebootManagerTest", "MockInjector.rebootAndApply");
       rebootAndApplied = true;
       return 0; // No error.
     }
@@ -148,24 +239,51 @@ public class UnattendedRebootManagerTest {
 
     @Override
     public void setRebootAlarm(Context context, long rebootTimeMillis) {
-      // reboot immediately
+      // To prevent infinite loop, do not simulate another reboot if reboot was already scheduled.
+      if (scheduledReboot) {
+        actualRebootTime = rebootTimeMillis;
+        return;
+      }
+      // Advance now to reboot time and reboot immediately.
+      scheduledReboot = true;
       actualRebootTime = rebootTimeMillis;
-      context.sendBroadcast(new Intent(UnattendedRebootManager.ACTION_TRIGGER_REBOOT));
+      setNow(rebootTimeMillis);
 
       LatchingBroadcastReceiver rebootReceiver = new LatchingBroadcastReceiver();
-      context.registerReceiver(
-          rebootReceiver, new IntentFilter(ACTION_TRIGGER_REBOOT), Context.RECEIVER_EXPORTED);
-      rebootReceiver.await(10, TimeUnit.SECONDS);
+
+      // Wait for reboot broadcast to be sent.
+      context.sendOrderedBroadcast(
+          new Intent(ACTION_TRIGGER_REBOOT), null, rebootReceiver, null, 0, null, null);
+
+      rebootReceiver.await(20, TimeUnit.SECONDS);
+    }
+
+    @Override
+    public void triggerRebootOnNetworkAvailable(Context context) {
+      requestedNetwork = true;
+    }
+
+    public boolean isRequestedNetwork() {
+      return requestedNetwork;
     }
 
     @Override
     public int getRebootStartTime() {
-      return REBOOT_HOUR;
+      return REBOOT_START_HOUR;
+    }
+
+    @Override
+    public int getRebootEndTime() {
+      return REBOOT_END_HOUR;
     }
 
     @Override
     public long now() {
-      return CURRENT_TIME;
+      return nowMillis;
+    }
+
+    public void setNow(long nowMillis) {
+      this.nowMillis = nowMillis;
     }
 
     @Override
@@ -175,7 +293,6 @@ public class UnattendedRebootManagerTest {
 
     @Override
     public void regularReboot(Context context) {
-      Log.i("UnattendedRebootManagerTest", "MockInjector.regularRebooted");
       regularRebooted = true;
     }
 
@@ -207,7 +324,7 @@ public class UnattendedRebootManagerTest {
       try {
         return latch.await(timeoutInMs, timeUnit);
       } catch (InterruptedException e) {
-        return false;
+        throw new RuntimeException(e);
       }
     }
   }

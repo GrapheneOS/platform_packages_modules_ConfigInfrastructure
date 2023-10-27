@@ -49,6 +49,7 @@ android_test {
         "android.test.base",
         "android.test.mock",
         "android.test.runner",
+        "framework-connectivity.stubs.module_lib",
         "framework-configinfrastructure",
     ],
     // Test coverage system runs on different devices. Need to
