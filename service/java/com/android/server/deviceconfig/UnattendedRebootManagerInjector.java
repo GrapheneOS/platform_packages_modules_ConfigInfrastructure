@@ -20,6 +20,8 @@ interface UnattendedRebootManagerInjector {
 
   ZoneId zoneId();
 
+  long elapsedRealtime();
+
   /** Reboot time injectors. */
   int getRebootStartTime();
 
