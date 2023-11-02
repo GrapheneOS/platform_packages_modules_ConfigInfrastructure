@@ -44,6 +44,7 @@ android_test {
         "frameworks-base-testutils",
         "mockito-target-minus-junit4",
         "truth",
+        "flag-junit",
     ],
     libs: [
         "android.test.base",
