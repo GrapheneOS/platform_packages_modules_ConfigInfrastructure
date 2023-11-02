@@ -43,7 +43,10 @@ public class UnattendedRebootManagerTest {
   private static final long CURRENT_TIME = 1696452549304L; // 2023-10-04T13:49:09.304
   private static final long REBOOT_TIME = 1696496400000L; // 2023-10-05T02:00:00
   private static final long RESCHEDULED_REBOOT_TIME = 1696582800000L; // 2023-10-06T02:00:00
-  private static final long OUTSIDE_WINDOW_REBOOT_TIME = 1696583400000L; // 2023-10-06T03:10:00
+  private static final long OUTSIDE_WINDOW_REBOOT_TIME = 1696587000000L; // 2023-10-06T03:10:00
+  private static final long RESCHEDULED_OUTSIDE_WINDOW_REBOOT_TIME =
+      1696669200000L; // 2023-10-07T02:00:00
+  private static final long ELAPSED_REALTIME_1_DAY = 86400000L;
 
   private Context mContext;
   private KeyguardManager mKeyguardManager;
@@ -83,6 +86,8 @@ public class UnattendedRebootManagerTest {
         },
         new IntentFilter(ACTION_TRIGGER_REBOOT),
         Context.RECEIVER_EXPORTED);
+
+    mFakeInjector.setElapsedRealtime(ELAPSED_REALTIME_1_DAY);
   }
 
   @Test
@@ -176,6 +181,26 @@ public class UnattendedRebootManagerTest {
   }
 
   @Test
+  public void scheduleReboot_elapsedRealtimeLessThanFrequency() {
+    Log.i(TAG, "scheduleReboot_elapsedRealtimeLessThanFrequency");
+    when(mKeyguardManager.isDeviceSecure()).thenReturn(true);
+    when(mConnectivityManager.getNetworkCapabilities(any()))
+        .thenReturn(
+            new NetworkCapabilities.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                .build());
+    mFakeInjector.setElapsedRealtime(82800000); // 23 hours
+
+    mRebootManager.prepareUnattendedReboot();
+    mRebootManager.scheduleReboot();
+
+    assertFalse(mFakeInjector.isRebootAndApplied());
+    assertFalse(mFakeInjector.isRegularRebooted());
+    assertThat(mFakeInjector.getActualRebootTime()).isEqualTo(RESCHEDULED_REBOOT_TIME);
+  }
+
+  @Test
   public void tryRebootOrSchedule_outsideRebootWindow() {
     Log.i(TAG, "scheduleReboot_internetOutsideRebootWindow");
     when(mKeyguardManager.isDeviceSecure()).thenReturn(true);
@@ -192,8 +217,10 @@ public class UnattendedRebootManagerTest {
     // reboot window.
     mRebootManager.tryRebootOrSchedule();
 
-    assertFalse(mFakeInjector.isRebootAndApplied());
+    assertTrue(mFakeInjector.isRebootAndApplied());
     assertFalse(mFakeInjector.isRegularRebooted());
+    assertThat(mFakeInjector.getActualRebootTime())
+        .isEqualTo(RESCHEDULED_OUTSIDE_WINDOW_REBOOT_TIME);
   }
 
   static class FakeInjector implements UnattendedRebootManagerInjector {
@@ -206,6 +233,8 @@ public class UnattendedRebootManagerTest {
     private boolean scheduledReboot;
 
     private long nowMillis;
+
+    private long elapsedRealtimeMillis;
 
     FakeInjector() {
       nowMillis = CURRENT_TIME;
@@ -289,6 +318,15 @@ public class UnattendedRebootManagerTest {
     @Override
     public ZoneId zoneId() {
       return ZoneId.of("America/Los_Angeles");
+    }
+
+    @Override
+    public long elapsedRealtime() {
+      return elapsedRealtimeMillis;
+    }
+
+    public void setElapsedRealtime(long elapsedRealtimeMillis) {
+      this.elapsedRealtimeMillis = elapsedRealtimeMillis;
     }
 
     @Override

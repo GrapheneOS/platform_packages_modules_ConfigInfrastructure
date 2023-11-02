@@ -16,12 +16,14 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.os.PowerManager;
 import android.os.RecoverySystem;
+import android.os.SystemClock;
 import android.util.Log;
 import com.android.internal.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Reboot scheduler for applying aconfig flags.
@@ -66,6 +68,11 @@ final class UnattendedRebootManager {
 
     public ZoneId zoneId() {
       return ZoneId.systemDefault();
+    }
+
+    @Override
+    public long elapsedRealtime() {
+      return SystemClock.elapsedRealtime();
     }
 
     public int getRebootStartTime() {
@@ -201,6 +208,17 @@ final class UnattendedRebootManager {
   void tryRebootOrSchedule() {
     Log.v(TAG, "Attempting unattended reboot");
 
+    // Has enough time passed since reboot?
+    if (TimeUnit.MILLISECONDS.toDays(mInjector.elapsedRealtime())
+        < mInjector.getRebootFrequency()) {
+      Log.v(
+          TAG,
+          "Device has already been rebooted in that last"
+              + mInjector.getRebootFrequency()
+              + " days.");
+      scheduleReboot();
+      return;
+    }
     // Is RoR is supported?
     if (!isDeviceSecure(mContext)) {
       Log.v(TAG, "Device is not secure. Proceed with regular reboot");
@@ -228,7 +246,7 @@ final class UnattendedRebootManager {
             .toLocalDateTime()
             .getHour();
     if (currentHour < mInjector.getRebootStartTime()
-        && currentHour >= mInjector.getRebootEndTime()) {
+        || currentHour >= mInjector.getRebootEndTime()) {
       Log.v(TAG, "Reboot requested outside of reboot window, reschedule.");
       prepareUnattendedReboot();
       scheduleReboot();
@@ -236,6 +254,7 @@ final class UnattendedRebootManager {
     }
 
     // Proceed with RoR.
+    Log.v(TAG, "Rebooting device...");
     try {
       int success = mInjector.rebootAndApply(mContext, REBOOT_REASON, /* slotSwitch= */ false);
       if (success != 0) {
