@@ -1,5 +1,7 @@
 package com.android.server.deviceconfig;
 
+import static com.android.server.deviceconfig.Flags.enableSimPinReplay;
+
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.AlarmManager;
@@ -19,6 +21,7 @@ import android.os.RecoverySystem;
 import android.os.SystemClock;
 import android.util.Log;
 import com.android.internal.annotations.VisibleForTesting;
+
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -56,6 +59,8 @@ final class UnattendedRebootManager {
   private boolean mLskfCaptured;
 
   private final UnattendedRebootManagerInjector mInjector;
+
+  private final SimPinReplayManager mSimPinReplayManager;
 
   private static class InjectorImpl implements UnattendedRebootManagerInjector {
     InjectorImpl() {
@@ -133,9 +138,13 @@ final class UnattendedRebootManager {
   }
 
   @VisibleForTesting
-  UnattendedRebootManager(Context context, UnattendedRebootManagerInjector injector) {
+  UnattendedRebootManager(
+      Context context,
+      UnattendedRebootManagerInjector injector,
+      SimPinReplayManager simPinReplayManager) {
     mContext = context;
     mInjector = injector;
+    mSimPinReplayManager = simPinReplayManager;
 
     mContext.registerReceiver(
         new BroadcastReceiver() {
@@ -160,7 +169,7 @@ final class UnattendedRebootManager {
   }
 
   UnattendedRebootManager(Context context) {
-    this(context, new InjectorImpl());
+    this(context, new InjectorImpl(), new SimPinReplayManager(context));
   }
 
   public void prepareUnattendedReboot() {
@@ -213,7 +222,7 @@ final class UnattendedRebootManager {
         < mInjector.getRebootFrequency()) {
       Log.v(
           TAG,
-          "Device has already been rebooted in that last"
+          "Device has already been rebooted in that last "
               + mInjector.getRebootFrequency()
               + " days.");
       scheduleReboot();
@@ -235,7 +244,7 @@ final class UnattendedRebootManager {
     // Is network connected?
     // TODO(b/305259443): Use after-boot network connectivity projection
     if (!isNetworkConnected(mContext)) {
-      Log.i(TAG, "Network is not connected, schedule reboot for another time.");
+      Log.i(TAG, "Network is not connected, reschedule reboot.");
       mInjector.triggerRebootOnNetworkAvailable(mContext);
       return;
     }
@@ -247,19 +256,24 @@ final class UnattendedRebootManager {
             .getHour();
     if (currentHour < mInjector.getRebootStartTime()
         || currentHour >= mInjector.getRebootEndTime()) {
-      Log.v(TAG, "Reboot requested outside of reboot window, reschedule.");
+      Log.v(TAG, "Reboot requested outside of reboot window, reschedule reboot.");
       prepareUnattendedReboot();
       scheduleReboot();
       return;
     }
+    // Is preparing for SIM PIN replay successful?
+    if (enableSimPinReplay() && !mSimPinReplayManager.prepareSimPinReplay()) {
+      Log.w(TAG, "Sim Pin Replay failed, reschedule reboot");
+      scheduleReboot();
+    }
 
     // Proceed with RoR.
-    Log.v(TAG, "Rebooting device...");
+    Log.v(TAG, "Rebooting device to apply device config flags.");
     try {
       int success = mInjector.rebootAndApply(mContext, REBOOT_REASON, /* slotSwitch= */ false);
       if (success != 0) {
         // If reboot is not successful, reschedule.
-        Log.w(TAG, "Unattended reboot failed, reschedule.");
+        Log.w(TAG, "Unattended reboot failed, reschedule reboot.");
         scheduleReboot();
       }
     } catch (IOException e) {

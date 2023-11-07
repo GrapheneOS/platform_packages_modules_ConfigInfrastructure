@@ -12,3 +12,10 @@ flag {
   description: "This flag controls enabling the unattended reboot feature for applying flags."
   bug: "297502146"
 }
+
+flag {
+  name: "enable_sim_pin_replay"
+  namespace: "core_experiments_team_internal"
+  description: "This flag controls enabling sim pin replay for unattended reboot."
+  bug: "305269414"
+}
