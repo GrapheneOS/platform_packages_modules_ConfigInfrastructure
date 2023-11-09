@@ -1,6 +1,8 @@
 package com.android.server.deviceconfig;
 
 import static androidx.test.platform.app.InstrumentationRegistry.getInstrumentation;
+import static com.android.server.deviceconfig.Flags.FLAG_ENABLE_SIM_PIN_REPLAY;
+
 import static com.android.server.deviceconfig.UnattendedRebootManager.ACTION_RESUME_ON_REBOOT_LSKF_CAPTURED;
 import static com.android.server.deviceconfig.UnattendedRebootManager.ACTION_TRIGGER_REBOOT;
 import static com.google.common.truth.Truth.assertThat;
@@ -10,6 +12,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import android.platform.test.flag.junit.SetFlagsRule;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import android.app.KeyguardManager;
@@ -29,6 +32,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 @SmallTest
@@ -53,9 +57,17 @@ public class UnattendedRebootManagerTest {
   private ConnectivityManager mConnectivityManager;
   private FakeInjector mFakeInjector;
   private UnattendedRebootManager mRebootManager;
+  private SimPinReplayManager mSimPinReplayManager;
+
+  @Rule
+  public final SetFlagsRule mSetFlagsRule = new SetFlagsRule();
+
 
   @Before
   public void setUp() throws Exception {
+    mSetFlagsRule.enableFlags(FLAG_ENABLE_SIM_PIN_REPLAY);
+
+    mSimPinReplayManager = mock(SimPinReplayManager.class);
     mKeyguardManager = mock(KeyguardManager.class);
     mConnectivityManager = mock(ConnectivityManager.class);
 
@@ -73,7 +85,7 @@ public class UnattendedRebootManagerTest {
         };
 
     mFakeInjector = new FakeInjector();
-    mRebootManager = new UnattendedRebootManager(mContext, mFakeInjector);
+    mRebootManager = new UnattendedRebootManager(mContext, mFakeInjector, mSimPinReplayManager);
 
     // Need to register receiver in tests so that the test doesn't trigger reboot requested by
     // deviceconfig.
@@ -100,6 +112,7 @@ public class UnattendedRebootManagerTest {
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
                 .build());
+    when(mSimPinReplayManager.prepareSimPinReplay()).thenReturn(true);
 
     mRebootManager.prepareUnattendedReboot();
     mRebootManager.scheduleReboot();
@@ -119,6 +132,7 @@ public class UnattendedRebootManagerTest {
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
                 .build());
+    when(mSimPinReplayManager.prepareSimPinReplay()).thenReturn(true);
 
     mRebootManager.prepareUnattendedReboot();
     mRebootManager.scheduleReboot();
@@ -138,6 +152,7 @@ public class UnattendedRebootManagerTest {
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
                 .build());
+    when(mSimPinReplayManager.prepareSimPinReplay()).thenReturn(true);
 
     mRebootManager.scheduleReboot();
 
@@ -147,10 +162,31 @@ public class UnattendedRebootManagerTest {
   }
 
   @Test
+  public void scheduleReboot_simPinPreparationFailed() {
+    Log.i(TAG, "scheduleReboot");
+    when(mKeyguardManager.isDeviceSecure()).thenReturn(true);
+    when(mConnectivityManager.getNetworkCapabilities(any()))
+        .thenReturn(
+            new NetworkCapabilities.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                .build());
+    when(mSimPinReplayManager.prepareSimPinReplay()).thenReturn(false).thenReturn(true);
+
+    mRebootManager.prepareUnattendedReboot();
+    mRebootManager.scheduleReboot();
+
+    assertTrue(mFakeInjector.isRebootAndApplied());
+    assertFalse(mFakeInjector.isRegularRebooted());
+    assertThat(mFakeInjector.getActualRebootTime()).isEqualTo(RESCHEDULED_REBOOT_TIME);
+  }
+
+  @Test
   public void scheduleReboot_noInternet() {
     Log.i(TAG, "scheduleReboot_noInternet");
     when(mKeyguardManager.isDeviceSecure()).thenReturn(true);
     when(mConnectivityManager.getNetworkCapabilities(any())).thenReturn(new NetworkCapabilities());
+    when(mSimPinReplayManager.prepareSimPinReplay()).thenReturn(true);
 
     mRebootManager.prepareUnattendedReboot();
     mRebootManager.scheduleReboot();
@@ -170,6 +206,7 @@ public class UnattendedRebootManagerTest {
             new NetworkCapabilities.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build());
+    when(mSimPinReplayManager.prepareSimPinReplay()).thenReturn(true);
 
     mRebootManager.prepareUnattendedReboot();
     mRebootManager.scheduleReboot();
@@ -190,6 +227,7 @@ public class UnattendedRebootManagerTest {
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
                 .build());
+    when(mSimPinReplayManager.prepareSimPinReplay()).thenReturn(true);
     mFakeInjector.setElapsedRealtime(82800000); // 23 hours
 
     mRebootManager.prepareUnattendedReboot();
@@ -210,6 +248,7 @@ public class UnattendedRebootManagerTest {
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
                 .build());
+    when(mSimPinReplayManager.prepareSimPinReplay()).thenReturn(true);
     mFakeInjector.setNow(OUTSIDE_WINDOW_REBOOT_TIME);
 
     mRebootManager.prepareUnattendedReboot();
