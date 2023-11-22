@@ -38,7 +38,7 @@ import java.util.concurrent.TimeUnit;
  * @hide
  */
 final class UnattendedRebootManager {
-  private static final int DEFAULT_REBOOT_WINDOW_START_TIME_HOUR = 1;
+  private static final int DEFAULT_REBOOT_WINDOW_START_TIME_HOUR = 3;
   private static final int DEFAULT_REBOOT_WINDOW_END_TIME_HOUR = 5;
 
   private static final int DEFAULT_REBOOT_FREQUENCY_DAYS = 2;
