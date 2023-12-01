@@ -39,8 +39,10 @@ java_sdk_library {
     ],
     libs: [
         "framework-configinfrastructure.impl",
-        "DeviceConfigServiceResources",
         "framework-connectivity.stubs.module_lib",
+    ],
+    impl_only_libs: [
+        "DeviceConfigServiceResources",
     ],
     min_sdk_version: "UpsideDownCake",
     sdk_version: "system_server_current",
