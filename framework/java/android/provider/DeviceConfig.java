@@ -17,7 +17,6 @@
 package android.provider;
 
 import static android.Manifest.permission.WRITE_ALLOWLISTED_DEVICE_CONFIG;
-import static android.Manifest.permission.READ_DEVICE_CONFIG;
 import static android.Manifest.permission.WRITE_DEVICE_CONFIG;
 import static android.Manifest.permission.READ_WRITE_SYNC_DISABLED_MODE_CONFIG;
 
@@ -1028,7 +1027,6 @@ public final class DeviceConfig {
      * @hide
      */
     @SystemApi
-    @RequiresPermission(READ_DEVICE_CONFIG)
     @Nullable
     public static String getProperty(@NonNull String namespace, @NonNull String name) {
         // Fetch all properties for the namespace at once and cache them in the local process, so we
@@ -1058,7 +1056,6 @@ public final class DeviceConfig {
      */
     @SystemApi
     @NonNull
-    @RequiresPermission(READ_DEVICE_CONFIG)
     public static Properties getProperties(@NonNull String namespace, @NonNull String ... names) {
         return new Properties(namespace,
                 Settings.Config.getStrings(namespace, Arrays.asList(names)));
@@ -1075,7 +1072,6 @@ public final class DeviceConfig {
      * @hide
      */
     @SystemApi
-    @RequiresPermission(READ_DEVICE_CONFIG)
     @Nullable
     public static String getString(@NonNull String namespace, @NonNull String name,
             @Nullable String defaultValue) {
@@ -1094,7 +1090,6 @@ public final class DeviceConfig {
      * @hide
      */
     @SystemApi
-    @RequiresPermission(READ_DEVICE_CONFIG)
     public static boolean getBoolean(@NonNull String namespace, @NonNull String name,
             boolean defaultValue) {
         String value = getProperty(namespace, name);
@@ -1112,7 +1107,6 @@ public final class DeviceConfig {
      * @hide
      */
     @SystemApi
-    @RequiresPermission(READ_DEVICE_CONFIG)
     public static int getInt(@NonNull String namespace, @NonNull String name, int defaultValue) {
         String value = getProperty(namespace, name);
         if (value == null) {
@@ -1137,7 +1131,6 @@ public final class DeviceConfig {
      * @hide
      */
     @SystemApi
-    @RequiresPermission(READ_DEVICE_CONFIG)
     public static long getLong(@NonNull String namespace, @NonNull String name, long defaultValue) {
         String value = getProperty(namespace, name);
         if (value == null) {
@@ -1162,7 +1155,6 @@ public final class DeviceConfig {
      * @hide
      */
     @SystemApi
-    @RequiresPermission(READ_DEVICE_CONFIG)
     public static float getFloat(@NonNull String namespace, @NonNull String name,
             float defaultValue) {
         String value = getProperty(namespace, name);
