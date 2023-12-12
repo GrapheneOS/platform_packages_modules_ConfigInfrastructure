@@ -45,11 +45,11 @@ public class UnattendedRebootManagerTest {
   private static final int REBOOT_END_HOUR = 3;
 
   private static final long CURRENT_TIME = 1696452549304L; // 2023-10-04T13:49:09.304
-  private static final long REBOOT_TIME = 1696496400000L; // 2023-10-05T02:00:00
-  private static final long RESCHEDULED_REBOOT_TIME = 1696582800000L; // 2023-10-06T02:00:00
+  private static final long REBOOT_TIME = 1696497120000L; // 2023-10-05T02:12:00
+  private static final long RESCHEDULED_REBOOT_TIME = 1696583520000L; // 2023-10-06T02:12:00
   private static final long OUTSIDE_WINDOW_REBOOT_TIME = 1696587000000L; // 2023-10-06T03:10:00
   private static final long RESCHEDULED_OUTSIDE_WINDOW_REBOOT_TIME =
-      1696669200000L; // 2023-10-07T02:00:00
+          1696669920000L; // 2023-10-07T02:12:00
   private static final long ELAPSED_REALTIME_1_DAY = 86400000L;
 
   private Context mContext;
