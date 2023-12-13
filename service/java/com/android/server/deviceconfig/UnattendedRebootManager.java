@@ -200,7 +200,7 @@ final class UnattendedRebootManager {
             .atZone(mInjector.zoneId())
             .toLocalDate()
             .plusDays(mInjector.getRebootFrequency())
-            .atTime(mInjector.getRebootStartTime(), /* minute= */ 0);
+            .atTime(mInjector.getRebootStartTime(), /* minute= */ 12);
     long rebootTimeMillis = timeToReboot.atZone(mInjector.zoneId()).toInstant().toEpochMilli();
     Log.v(TAG, "Scheduling unattended reboot at time " + timeToReboot);
 
