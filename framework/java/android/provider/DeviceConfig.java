@@ -1196,6 +1196,10 @@ public final class DeviceConfig {
     @Nullable
     public static String getString(@NonNull String namespace, @NonNull String name,
             @Nullable String defaultValue) {
+        if (android.ext.AppInfoExt.getInitialPackageId() == android.ext.PackageId.PIXEL_HEALTH) {
+            return defaultValue;
+        }
+
         String value = getProperty(namespace, name);
         return value != null ? value : defaultValue;
     }
@@ -1219,6 +1223,16 @@ public final class DeviceConfig {
                 // avoid IPC spam.
                 return defaultValue;
             }
+        }
+
+        if (android.ext.AppInfoExt.getInitialPackageId() == android.ext.PackageId.PIXEL_HEALTH) {
+            if ("device_personalization_services".equals(namespace)) {
+                switch (name) {
+                    case "Thermometer__otsv2_enabled":
+                        return true;
+                }
+            }
+            return defaultValue;
         }
 
         String value = getProperty(namespace, name);
