@@ -46,10 +46,6 @@ java_sdk_library {
     ],
     static_libs: [
         "aconfigd_java_proto_lib_repackaged",
-
-        // b/390667838: remove this dependency.
-        "aconfigd_java_proto_lite_lib",
-
         "configinfra_framework_flags_java_lib",
         "modules-utils-build",
         "modules-utils-proto",
