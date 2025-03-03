@@ -16,13 +16,6 @@
 
 package android.os.flagging;
 
-import android.aconfigd.Aconfigd.FlagOverride;
-import android.aconfigd.Aconfigd.StorageRequestMessage;
-import android.aconfigd.Aconfigd.StorageRequestMessage.FlagOverrideType;
-import android.aconfigd.Aconfigd.StorageRequestMessage.RemoveOverrideType;
-import android.aconfigd.Aconfigd.StorageRequestMessages;
-import android.aconfigd.Aconfigd.StorageReturnMessage;
-import android.aconfigd.Aconfigd.StorageReturnMessages;
 import android.annotation.FlaggedApi;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -32,7 +25,6 @@ import android.content.Context;
 import android.provider.flags.Flags;
 
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -86,18 +78,12 @@ public final class FlagManager {
     @FlaggedApi(Flags.FLAG_NEW_STORAGE_PUBLIC_API)
     public void setBooleanOverridesOnSystemBuildFingerprint(
             @NonNull String buildFingerprint, @NonNull Map<String, Boolean> flags) {
-        if (Flags.useProtoInputStream()) {
-            try {
-                (new AconfigdProtoStreamer()).sendOtaFlagOverrideRequests(flags, buildFingerprint);
-            } catch (IOException e) {
-                throw new AconfigStorageWriteException(
-                        "failed to set boolean overrides on system build fingerprint", e);
-            }
-            return;
+        try {
+            (new AconfigdProtoStreamer()).sendOtaFlagOverrideRequests(flags, buildFingerprint);
+        } catch (IOException e) {
+            throw new AconfigStorageWriteException(
+                    "failed to set boolean overrides on system build fingerprint", e);
         }
-        StorageRequestMessages requestMessages =
-                buildOtaFlagStagingMessages(Flag.buildFlags(flags), buildFingerprint);
-        sendMessages(requestMessages);
     }
 
     /**
@@ -112,23 +98,15 @@ public final class FlagManager {
      */
     @FlaggedApi(Flags.FLAG_NEW_STORAGE_PUBLIC_API)
     public void setBooleanOverridesOnReboot(@NonNull Map<String, Boolean> flags) {
-        if (Flags.useProtoInputStream()) {
-            try {
-                (new AconfigdProtoStreamer())
-                        .sendFlagOverrideRequests(
-                                flags,
-                                android.internal.configinfra.aconfigd.x.Aconfigd
-                                        .StorageRequestMessage.SERVER_ON_REBOOT);
-            } catch (IOException e) {
-                throw new AconfigStorageWriteException(
-                        "failed to set boolean overrides on reboot", e);
-            }
-            return;
+        try {
+            (new AconfigdProtoStreamer())
+                    .sendFlagOverrideRequests(
+                            flags,
+                            android.internal.configinfra.aconfigd.x.Aconfigd.StorageRequestMessage
+                                    .SERVER_ON_REBOOT);
+        } catch (IOException e) {
+            throw new AconfigStorageWriteException("failed to set boolean overrides on reboot", e);
         }
-        StorageRequestMessages requestMessages =
-                buildFlagOverrideMessages(
-                        Flag.buildFlags(flags), FlagOverrideType.SERVER_ON_REBOOT);
-        sendMessages(requestMessages);
     }
 
     /**
@@ -143,22 +121,15 @@ public final class FlagManager {
      */
     @FlaggedApi(Flags.FLAG_NEW_STORAGE_PUBLIC_API)
     public void setBooleanLocalOverridesOnReboot(@NonNull Map<String, Boolean> flags) {
-        if (Flags.useProtoInputStream()) {
-            try {
-                (new AconfigdProtoStreamer())
-                        .sendFlagOverrideRequests(
-                                flags,
-                                android.internal.configinfra.aconfigd.x.Aconfigd
-                                        .StorageRequestMessage.LOCAL_ON_REBOOT);
-            } catch (IOException e) {
-                throw new AconfigStorageWriteException(
-                        "failed to set boolean overrides on reboot", e);
-            }
-            return;
+        try {
+            (new AconfigdProtoStreamer())
+                    .sendFlagOverrideRequests(
+                            flags,
+                            android.internal.configinfra.aconfigd.x.Aconfigd.StorageRequestMessage
+                                    .LOCAL_ON_REBOOT);
+        } catch (IOException e) {
+            throw new AconfigStorageWriteException("failed to set boolean overrides on reboot", e);
         }
-        StorageRequestMessages requestMessages =
-                buildFlagOverrideMessages(Flag.buildFlags(flags), FlagOverrideType.LOCAL_ON_REBOOT);
-        sendMessages(requestMessages);
     }
 
     /**
@@ -176,22 +147,15 @@ public final class FlagManager {
      */
     @FlaggedApi(Flags.FLAG_NEW_STORAGE_PUBLIC_API)
     public void setBooleanLocalOverridesImmediately(@NonNull Map<String, Boolean> flags) {
-        if (Flags.useProtoInputStream()) {
-            try {
-                (new AconfigdProtoStreamer())
-                        .sendFlagOverrideRequests(
-                                flags,
-                                android.internal.configinfra.aconfigd.x.Aconfigd
-                                        .StorageRequestMessage.LOCAL_IMMEDIATE);
-            } catch (IOException e) {
-                throw new AconfigStorageWriteException(
-                        "failed to set boolean overrides on reboot", e);
-            }
-            return;
+        try {
+            (new AconfigdProtoStreamer())
+                    .sendFlagOverrideRequests(
+                            flags,
+                            android.internal.configinfra.aconfigd.x.Aconfigd.StorageRequestMessage
+                                    .LOCAL_IMMEDIATE);
+        } catch (IOException e) {
+            throw new AconfigStorageWriteException("failed to set boolean overrides on reboot", e);
         }
-        StorageRequestMessages requestMessages =
-                buildFlagOverrideMessages(Flag.buildFlags(flags), FlagOverrideType.LOCAL_IMMEDIATE);
-        sendMessages(requestMessages);
     }
 
     /**
@@ -205,24 +169,15 @@ public final class FlagManager {
      */
     @FlaggedApi(Flags.FLAG_NEW_STORAGE_PUBLIC_API)
     public void clearBooleanLocalOverridesOnReboot(@Nullable Set<String> flags) {
-        if (Flags.useProtoInputStream()) {
-            try {
-                (new AconfigdProtoStreamer())
-                        .sendClearFlagOverrideRequests(
-                                flags,
-                                android.internal.configinfra.aconfigd.x.Aconfigd
-                                        .StorageRequestMessage.REMOVE_LOCAL_ON_REBOOT);
-            } catch (IOException e) {
-                throw new AconfigStorageWriteException(
-                        "failed to set boolean overrides on reboot", e);
-            }
-            return;
+        try {
+            (new AconfigdProtoStreamer())
+                    .sendClearFlagOverrideRequests(
+                            flags,
+                            android.internal.configinfra.aconfigd.x.Aconfigd.StorageRequestMessage
+                                    .REMOVE_LOCAL_ON_REBOOT);
+        } catch (IOException e) {
+            throw new AconfigStorageWriteException("failed to set boolean overrides on reboot", e);
         }
-        StorageRequestMessages requestMessages =
-                buildClearFlagOverridesMessages(
-                        Flag.buildFlagsWithoutValues(flags),
-                        RemoveOverrideType.REMOVE_LOCAL_ON_REBOOT);
-        sendMessages(requestMessages);
     }
 
     /**
@@ -239,147 +194,14 @@ public final class FlagManager {
      */
     @FlaggedApi(Flags.FLAG_NEW_STORAGE_PUBLIC_API)
     public void clearBooleanLocalOverridesImmediately(@Nullable Set<String> flags) {
-        if (Flags.useProtoInputStream()) {
-            try {
-                (new AconfigdProtoStreamer())
-                        .sendClearFlagOverrideRequests(
-                                flags,
-                                android.internal.configinfra.aconfigd.x.Aconfigd
-                                        .StorageRequestMessage.REMOVE_LOCAL_IMMEDIATE);
-            } catch (IOException e) {
-                throw new AconfigStorageWriteException(
-                        "failed to set boolean overrides on reboot", e);
-            }
-            return;
-        }
-        StorageRequestMessages requestMessages =
-                buildClearFlagOverridesMessages(
-                        Flag.buildFlagsWithoutValues(flags),
-                        RemoveOverrideType.REMOVE_LOCAL_IMMEDIATE);
-        sendMessages(requestMessages);
-    }
-
-    private void sendMessages(StorageRequestMessages messages) {
         try {
-            StorageReturnMessages returnMessages =
-                    (new AconfigdSocketWriter()).sendMessages(messages);
-
-            String errorMessage = "";
-            for (StorageReturnMessage message : returnMessages.getMsgsList()) {
-                if (message.hasErrorMessage()) {
-                    errorMessage += message.getErrorMessage() + "\n";
-                }
-            }
-
-            if (!errorMessage.isEmpty()) {
-                throw new AconfigStorageWriteException(
-                        "error(s) writing aconfig flags: " + errorMessage);
-            }
+            (new AconfigdProtoStreamer())
+                    .sendClearFlagOverrideRequests(
+                            flags,
+                            android.internal.configinfra.aconfigd.x.Aconfigd.StorageRequestMessage
+                                    .REMOVE_LOCAL_IMMEDIATE);
         } catch (IOException e) {
-            throw new AconfigStorageWriteException("IO error writing aconfig flags", e);
+            throw new AconfigStorageWriteException("failed to set boolean overrides on reboot", e);
         }
-    }
-
-    private static class Flag {
-        public final String packageName;
-        public final String flagName;
-        public final String value;
-
-        public Flag(@NonNull String qualifiedName, @Nullable Boolean value) {
-            packageName = qualifiedName.substring(0, qualifiedName.lastIndexOf("."));
-            flagName = qualifiedName.substring(qualifiedName.lastIndexOf(".") + 1);
-            this.value = Boolean.toString(value);
-        }
-
-        public static Set<Flag> buildFlags(@NonNull Map<String, Boolean> flags) {
-            HashSet<Flag> flagSet = new HashSet();
-            for (Map.Entry<String, Boolean> flagAndValue : flags.entrySet()) {
-                flagSet.add(new Flag(flagAndValue.getKey(), flagAndValue.getValue()));
-            }
-            return flagSet;
-        }
-
-        public static Set<Flag> buildFlagsWithoutValues(@NonNull Set<String> flags) {
-            HashSet<Flag> flagSet = new HashSet();
-            for (String flag : flags) {
-                flagSet.add(new Flag(flag, null));
-            }
-            return flagSet;
-        }
-    }
-
-    private static StorageRequestMessages buildFlagOverrideMessages(
-            @NonNull Set<Flag> flagSet, FlagOverrideType overrideType) {
-        StorageRequestMessages.Builder requestMessagesBuilder = StorageRequestMessages.newBuilder();
-        for (Flag flag : flagSet) {
-            StorageRequestMessage.FlagOverrideMessage message =
-                    StorageRequestMessage.FlagOverrideMessage.newBuilder()
-                            .setPackageName(flag.packageName)
-                            .setFlagName(flag.flagName)
-                            .setFlagValue(flag.value)
-                            .setOverrideType(overrideType)
-                            .build();
-            StorageRequestMessage requestMessage =
-                    StorageRequestMessage.newBuilder().setFlagOverrideMessage(message).build();
-            requestMessagesBuilder.addMsgs(requestMessage);
-        }
-        return requestMessagesBuilder.build();
-    }
-
-    private static StorageRequestMessages buildOtaFlagStagingMessages(
-            @NonNull Set<Flag> flagSet, @NonNull String buildFingerprint) {
-        StorageRequestMessage.OTAFlagStagingMessage.Builder otaMessageBuilder =
-                StorageRequestMessage.OTAFlagStagingMessage.newBuilder()
-                        .setBuildId(buildFingerprint);
-        for (Flag flag : flagSet) {
-            FlagOverride override =
-                    FlagOverride.newBuilder()
-                            .setPackageName(flag.packageName)
-                            .setFlagName(flag.flagName)
-                            .setFlagValue(flag.value)
-                            .build();
-            otaMessageBuilder.addOverrides(override);
-        }
-        StorageRequestMessage.OTAFlagStagingMessage otaMessage = otaMessageBuilder.build();
-        StorageRequestMessage requestMessage =
-                StorageRequestMessage.newBuilder().setOtaStagingMessage(otaMessage).build();
-        StorageRequestMessages.Builder requestMessagesBuilder = StorageRequestMessages.newBuilder();
-        requestMessagesBuilder.addMsgs(requestMessage);
-        return requestMessagesBuilder.build();
-    }
-
-    private static StorageRequestMessages buildClearFlagOverridesMessages(
-            @Nullable Set<Flag> flagSet, RemoveOverrideType removeOverrideType) {
-        StorageRequestMessages.Builder requestMessagesBuilder = StorageRequestMessages.newBuilder();
-
-        if (flagSet == null) {
-            StorageRequestMessage.RemoveLocalOverrideMessage message =
-                    StorageRequestMessage.RemoveLocalOverrideMessage.newBuilder()
-                            .setRemoveAll(true)
-                            .setRemoveOverrideType(removeOverrideType)
-                            .build();
-            StorageRequestMessage requestMessage =
-                    StorageRequestMessage.newBuilder()
-                            .setRemoveLocalOverrideMessage(message)
-                            .build();
-            requestMessagesBuilder.addMsgs(requestMessage);
-            return requestMessagesBuilder.build();
-        }
-
-        for (Flag flag : flagSet) {
-            StorageRequestMessage.RemoveLocalOverrideMessage message =
-                    StorageRequestMessage.RemoveLocalOverrideMessage.newBuilder()
-                            .setPackageName(flag.packageName)
-                            .setFlagName(flag.flagName)
-                            .setRemoveOverrideType(removeOverrideType)
-                            .setRemoveAll(false)
-                            .build();
-            StorageRequestMessage requestMessage =
-                    StorageRequestMessage.newBuilder()
-                            .setRemoveLocalOverrideMessage(message)
-                            .build();
-            requestMessagesBuilder.addMsgs(requestMessage);
-        }
-        return requestMessagesBuilder.build();
     }
 }
