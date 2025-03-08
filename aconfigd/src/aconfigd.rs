@@ -66,6 +66,39 @@ impl Aconfigd {
         Ok(())
     }
 
+    /// Remove non platform boot storage file copies
+    pub fn remove_non_platform_boot_files(&mut self) -> Result<(), AconfigdError> {
+        let boot_dir = self.root_dir.join("boot");
+        for entry in std::fs::read_dir(&boot_dir)
+            .map_err(|errmsg| AconfigdError::FailToReadBootDir { errmsg })?
+        {
+            match entry {
+                Ok(entry) => {
+                    let path = entry.path();
+                    if !path.is_file() {
+                        continue;
+                    }
+                    if let Some(base_name) = path.file_name() {
+                        if let Some(file_name) = base_name.to_str() {
+                            if file_name.starts_with("system")
+                                || file_name.starts_with("system_ext")
+                                || file_name.starts_with("product")
+                                || file_name.starts_with("vendor")
+                            {
+                                continue;
+                            }
+                            remove_file(&path);
+                        }
+                    }
+                }
+                Err(errmsg) => {
+                    warn!("failed to visit entry: {}", errmsg);
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Initialize aconfigd from persist storage records
     pub fn initialize_from_storage_record(&mut self) -> Result<(), AconfigdError> {
         let boot_dir = self.root_dir.join("boot");
@@ -80,7 +113,7 @@ impl Aconfigd {
     /// storage files and create new boot storage files for each platform
     /// partitions
     pub fn initialize_platform_storage(&mut self) -> Result<(), AconfigdError> {
-        for container in ["system", "product", "vendor"] {
+        for container in ["system", "system_ext", "product", "vendor"] {
             debug!("start initialize {} flags", container);
 
             let aconfig_dir = PathBuf::from("/".to_string() + container + "/etc/aconfig");
@@ -124,7 +157,7 @@ impl Aconfigd {
 
         self.storage_manager.apply_staged_ota_flags()?;
 
-        for container in ["system", "product", "vendor"] {
+        for container in ["system", "system_ext", "product", "vendor"] {
             self.storage_manager.apply_all_staged_overrides(container)?;
         }
 
@@ -235,7 +268,41 @@ impl Aconfigd {
         request_pb: &ProtoOTAFlagStagingMessage,
     ) -> Result<ProtoStorageReturnMessage, AconfigdError> {
         let ota_flags_pb_file = self.root_dir.join("flags").join("ota.pb");
-        write_pb_to_file::<ProtoOTAFlagStagingMessage>(request_pb, &ota_flags_pb_file)?;
+
+        let mut existing_ota_flags =
+            read_pb_from_file::<ProtoOTAFlagStagingMessage>(&ota_flags_pb_file)
+                .unwrap_or_else(|_| ProtoOTAFlagStagingMessage::new());
+
+        if request_pb.has_build_id()
+            && existing_ota_flags.has_build_id()
+            && request_pb.build_id() == existing_ota_flags.build_id()
+        {
+            let mut merged_flags = existing_ota_flags.overrides.to_vec();
+            merged_flags.extend(request_pb.overrides.clone());
+
+            let mut seen_flags = std::collections::HashSet::new();
+            let mut new_flags = Vec::new();
+
+            for flag in merged_flags {
+                let flag = flag.clone();
+                let package_name = flag.package_name().to_string();
+                let flag_name = flag.flag_name().to_string();
+                let key = (package_name, flag_name);
+                if seen_flags.insert(key) {
+                    new_flags.push(flag);
+                }
+            }
+            merged_flags = new_flags;
+            existing_ota_flags.overrides = merged_flags.into();
+
+            write_pb_to_file::<ProtoOTAFlagStagingMessage>(
+                &existing_ota_flags,
+                &ota_flags_pb_file,
+            )?;
+        } else {
+            write_pb_to_file::<ProtoOTAFlagStagingMessage>(request_pb, &ota_flags_pb_file)?;
+        }
+
         let mut return_pb = ProtoStorageReturnMessage::new();
         return_pb.mut_ota_staging_message();
         Ok(return_pb)
@@ -1061,7 +1128,7 @@ mod tests {
             .unwrap();
         assert_eq!(pb.records.len(), 3);
 
-        for container in ["system", "product", "vendor"] {
+        for container in ["system", "system_ext", "product", "vendor"] {
             let aconfig_dir = PathBuf::from("/".to_string() + container + "/etc/aconfig");
             let default_package_map = aconfig_dir.join("package.map");
             let default_flag_map = aconfig_dir.join("flag.map");

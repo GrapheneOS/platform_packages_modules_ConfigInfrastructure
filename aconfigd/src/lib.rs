@@ -131,6 +131,9 @@ pub enum AconfigdError {
     #[error("fail to read /apex dir: {:?}", .errmsg)]
     FailToReadApexDir { errmsg: std::io::Error },
 
+    #[error("fail to read /boot dir: {:?}", .errmsg)]
+    FailToReadBootDir { errmsg: std::io::Error },
+
     #[error("cannot find container for package {}", .package)]
     FailToFindContainer { package: String },
 
