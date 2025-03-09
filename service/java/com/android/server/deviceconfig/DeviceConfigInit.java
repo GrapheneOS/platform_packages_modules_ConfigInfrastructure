@@ -39,6 +39,7 @@ public class DeviceConfigInit {
     private static final String STAGED_NAMESPACE = "staged";
 
     private static final String SYSTEM_FLAGS_PATH = "/system/etc/aconfig_flags.pb";
+    private static final String SYSTEM_EXT_FLAGS_PATH = "/system_ext/etc/aconfig_flags.pb";
     private static final String PRODUCT_FLAGS_PATH = "/product/etc/aconfig_flags.pb";
     private static final String VENDOR_FLAGS_PATH = "/vendor/etc/aconfig_flags.pb";
 
@@ -94,6 +95,7 @@ public class DeviceConfigInit {
                 Map<String, Set<String>> aconfigFlags = new HashMap<>();
                 try {
                     addAconfigFlagsFromFile(aconfigFlags, SYSTEM_FLAGS_PATH);
+                    addAconfigFlagsFromFile(aconfigFlags, SYSTEM_EXT_FLAGS_PATH);
                     addAconfigFlagsFromFile(aconfigFlags, PRODUCT_FLAGS_PATH);
                     addAconfigFlagsFromFile(aconfigFlags, VENDOR_FLAGS_PATH);
                 } catch (IOException e) {

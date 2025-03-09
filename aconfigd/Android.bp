@@ -17,6 +17,7 @@ rust_defaults {
     edition: "2021",
     lints: "none",
     rustlibs: [
+        "libaconfig_new_storage_flags_rust",
         "libaconfig_storage_file",
         "libaconfig_storage_read_api",
         "libaconfig_storage_write_api",

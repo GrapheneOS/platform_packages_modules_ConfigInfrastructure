@@ -62,6 +62,19 @@ pub fn start_socket() -> Result<()> {
 pub fn init() -> Result<()> {
     let mut aconfigd = Aconfigd::new(Path::new(ACONFIGD_ROOT_DIR), Path::new(STORAGE_RECORDS));
     aconfigd.remove_boot_files()?;
+
+    // One time clean up to remove the boot value and info file for mainline modules
+    // that are not in the pb records file. For those mainline modules already in the
+    // records pb file, the above code should remove their boot copy already. Here
+    // we add additional enforcement to ensure that we clear up all mainline boot
+    // copies, regardless if a mainline module is in records or not.
+    // NOTE: this is a one time operation to be removed once the flag is finalized.
+    // as we will add the second change that block boot copy from inactive container
+    // to be generated in the first place.
+    if aconfig_new_storage_flags::bluetooth_flag_value_bug_fix() {
+        aconfigd.remove_non_platform_boot_files()?
+    }
+
     aconfigd.initialize_from_storage_record()?;
     aconfigd.initialize_mainline_storage()?;
     Ok(())

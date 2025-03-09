@@ -91,11 +91,12 @@ public class AconfigPackage {
                             FlagValueList.fromBytes(mapStorageFile(BOOT_PATH + container + ".val"));
                     StorageFilesBundle files = new StorageFilesBundle(pTable, fTable, fValueList);
                     for (String packageName : pTable.getPackageList()) {
+                        Log.i(TAG, packageName + " is mapped to " + container);
                         sStorageFilesCache.put(packageName, files);
                     }
                 } catch (Exception e) {
                     // pass
-                    Log.w(TAG, e.toString());
+                    Log.w(TAG, "failed to map some package from " + file + ": " + e.toString());
                 }
             }
         }

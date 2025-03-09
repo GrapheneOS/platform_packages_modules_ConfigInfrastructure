@@ -61,8 +61,25 @@ impl StorageFilesManager {
             return Ok(());
         }
 
-        self.all_storage_files
-            .insert(String::from(pb.container()), StorageFiles::from_pb(pb, &self.root_dir)?);
+        if aconfig_new_storage_flags::bluetooth_flag_value_bug_fix() {
+            // Only create storage file object if the container is active. This is to
+            // ensure that for inactive containers, the storage files object will not
+            // be created and thus their boot copy will not be produced. And thus we
+            // can prevent them from being used.
+            if PathBuf::from(pb.package_map()).exists()
+                && PathBuf::from(pb.flag_map()).exists()
+                && PathBuf::from(pb.flag_val()).exists()
+                && PathBuf::from(pb.flag_info()).exists()
+            {
+                self.all_storage_files.insert(
+                    String::from(pb.container()),
+                    StorageFiles::from_pb(pb, &self.root_dir)?,
+                );
+            }
+        } else {
+            self.all_storage_files
+                .insert(String::from(pb.container()), StorageFiles::from_pb(pb, &self.root_dir)?);
+        }
 
         Ok(())
     }
