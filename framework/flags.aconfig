@@ -79,3 +79,10 @@ flag {
     purpose: PURPOSE_BUGFIX
   }
 }
+
+flag {
+  name: "flag_manager_unit_test_flag"
+  namespace: "core_experiments_team_internal"
+  description: "Used in FlagManagerUnitTests to test flipping flags with public write APIs"
+  bug: "384572622"
+}

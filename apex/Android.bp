@@ -109,7 +109,6 @@ apex {
         "com.android.configinfrastrcture.init.rc",
         "current_sdkinfo",
     ],
-    min_sdk_version: "34",
     key: "com.android.configinfrastructure.key",
     certificate: ":com.android.configinfrastructure.certificate",
     apps: [

@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 
-use crate::utils::{copy_file, get_files_digest, read_pb_from_file, remove_file, write_pb_to_file};
+use crate::utils::{
+    copy_file, copy_file_without_fsync, get_files_digest, read_pb_from_file, remove_file,
+    write_pb_to_file,
+};
 use crate::AconfigdError;
 use aconfig_storage_file::{
     list_flags, list_flags_with_info, FlagInfoBit, FlagValueSummary, FlagValueType,
@@ -712,12 +715,12 @@ impl StorageFiles {
     /// Apply both server and local overrides
     pub(crate) fn apply_all_staged_overrides(&mut self) -> Result<(), AconfigdError> {
         debug!("apply staged server overrides for container {}", &self.storage_record.container);
-        copy_file(
+        copy_file_without_fsync(
             &self.storage_record.persist_flag_val,
             &self.storage_record.boot_flag_val,
             0o644,
         )?;
-        copy_file(
+        copy_file_without_fsync(
             &self.storage_record.persist_flag_info,
             &self.storage_record.boot_flag_info,
             0o644,
