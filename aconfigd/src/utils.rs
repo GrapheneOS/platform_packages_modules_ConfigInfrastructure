@@ -66,6 +66,39 @@ pub(crate) fn copy_file(src: &Path, dst: &Path, mode: u32) -> Result<(), Aconfig
     set_file_permission(dst, mode)
 }
 
+/// Copy file without fsync
+pub(crate) fn copy_file_without_fsync(
+    src: &Path,
+    dst: &Path,
+    mode: u32,
+) -> Result<(), AconfigdError> {
+    if dst.exists() {
+        set_file_permission(dst, 0o644)?;
+    }
+
+    let mut src_file = File::open(src).map_err(|errmsg| AconfigdError::FailToCopyFile {
+        src: src.display().to_string(),
+        dst: dst.display().to_string(),
+        errmsg,
+    })?;
+
+    let mut dst_file = File::create(dst).map_err(|errmsg| AconfigdError::FailToCopyFile {
+        src: src.display().to_string(),
+        dst: dst.display().to_string(),
+        errmsg,
+    })?;
+
+    std::io::copy(&mut src_file, &mut dst_file).map_err(|errmsg| {
+        AconfigdError::FailToCopyFile {
+            src: src.display().to_string(),
+            dst: dst.display().to_string(),
+            errmsg,
+        }
+    })?;
+
+    set_file_permission(dst, mode)
+}
+
 /// Remove file
 pub(crate) fn remove_file(src: &Path) -> Result<(), AconfigdError> {
     if let Ok(true) = src.try_exists() {
