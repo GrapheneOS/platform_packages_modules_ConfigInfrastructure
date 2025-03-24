@@ -34,9 +34,6 @@ import java.util.Map;
 @FlaggedApi(Flags.FLAG_STAGE_FLAGS_FOR_BUILD)
 public final class StageOtaFlags {
     private static String LOG_TAG = "StageOtaFlags";
-    private static final String SOCKET_ADDRESS = "aconfigd_system";
-    private static final String STORAGE_MARKER_FILE_PATH =
-            "/metadata/aconfig/boot/enable_only_new_storage";
 
     /** Aconfig storage is disabled and unavailable for writes. @hide */
     @SystemApi public static final int STATUS_STORAGE_NOT_ENABLED = -1;
