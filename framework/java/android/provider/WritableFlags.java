@@ -185,7 +185,6 @@ final class WritableFlags {
                 "biometrics/android.security.report_primary_auth_attempts",
                 "biometrics/android.security.secure_lockdown",
                 "biometrics/android.security.should_trust_manager_listen_for_primary_auth",
-                "biometrics/android.security.significant_places",
                 "biometrics/biometric_strengths",
                 "biometrics/enable_biometric_property_verification",
                 "biometrics_framework/com.android.server.biometrics.face_vhal_feature",
