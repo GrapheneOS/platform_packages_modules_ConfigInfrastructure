@@ -178,7 +178,6 @@ final class WritableFlags {
                 "backup_and_restore/full_backup_write_to_transport_buffer_size_bytes",
                 "battery_saver/enable_night_mode",
                 "battery_saver/location_mode",
-                "biometrics/android.adaptiveauth.report_biometric_auth_attempts",
                 "biometrics/android.hardware.biometrics.add_key_agreement_crypto_object",
                 "biometrics/android.security.clear_strong_auth_on_add_primary_credential",
                 "biometrics/android.security.report_primary_auth_attempts",
