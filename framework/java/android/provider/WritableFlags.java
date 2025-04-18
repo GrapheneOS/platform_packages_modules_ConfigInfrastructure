@@ -699,6 +699,7 @@ final class WritableFlags {
                 "systemui/use_back_gesture_ml",
                 "systemui/use_unbundled_sharesheet",
                 "systemui/volume_separate_notification",
+                "systemui/widget_events_report_interval_ms",
                 "tare/enable_tare",
                 "telecom/com.android.server.telecom.flags.cache_call_audio_callbacks",
                 "telecom/com.android.server.telecom.flags.get_registered_phone_accounts",
