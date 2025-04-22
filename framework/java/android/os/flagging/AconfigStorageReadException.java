@@ -41,6 +41,7 @@ import java.lang.annotation.RetentionPolicy;
  * </ul>
  */
 @FlaggedApi(FLAG_NEW_STORAGE_PUBLIC_API)
+@android.ravenwood.annotation.RavenwoodKeepWholeClass
 public class AconfigStorageReadException extends RuntimeException {
 
     /** Generic error code indicating an unspecified Aconfig Storage error. */
