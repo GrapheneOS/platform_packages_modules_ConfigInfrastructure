@@ -66,34 +66,19 @@ impl Aconfigd {
         Ok(())
     }
 
-    /// Remove non platform boot storage file copies
-    pub fn remove_non_platform_boot_files(&mut self) -> Result<(), AconfigdError> {
+    /// Remove inactive boot storage file copies
+    pub fn remove_inactive_boot_files(&mut self) -> Result<(), AconfigdError> {
+        let pb = read_pb_from_file::<ProtoPersistStorageRecords>(&self.persist_storage_records)?;
         let boot_dir = self.root_dir.join("boot");
-        for entry in std::fs::read_dir(&boot_dir)
-            .map_err(|errmsg| AconfigdError::FailToReadBootDir { errmsg })?
-        {
-            match entry {
-                Ok(entry) => {
-                    let path = entry.path();
-                    if !path.is_file() {
-                        continue;
-                    }
-                    if let Some(base_name) = path.file_name() {
-                        if let Some(file_name) = base_name.to_str() {
-                            if file_name.starts_with("system")
-                                || file_name.starts_with("system_ext")
-                                || file_name.starts_with("product")
-                                || file_name.starts_with("vendor")
-                            {
-                                continue;
-                            }
-                            remove_file(&path);
-                        }
-                    }
-                }
-                Err(errmsg) => {
-                    warn!("failed to visit entry: {}", errmsg);
-                }
+        for entry in pb.records.iter() {
+            if !Path::new(entry.package_map()).exists()
+                || !Path::new(entry.flag_map()).exists()
+                || !Path::new(entry.flag_val()).exists()
+                || !Path::new(entry.flag_info()).exists()
+            {
+                debug!("remove boot storage files for container {}", entry.container());
+                remove_file(&boot_dir.join(String::from(entry.container()) + ".val"))?;
+                remove_file(&boot_dir.join(String::from(entry.container()) + ".info"))?;
             }
         }
         Ok(())
@@ -101,7 +86,6 @@ impl Aconfigd {
 
     /// Initialize aconfigd from persist storage records
     pub fn initialize_from_storage_record(&mut self) -> Result<(), AconfigdError> {
-        let boot_dir = self.root_dir.join("boot");
         let pb = read_pb_from_file::<ProtoPersistStorageRecords>(&self.persist_storage_records)?;
         for entry in pb.records.iter() {
             self.storage_manager.add_storage_files_from_pb(entry);
@@ -150,10 +134,10 @@ impl Aconfigd {
                 &default_flag_val,
                 &default_flag_info,
             )?;
-
-            self.storage_manager
-                .write_persist_storage_records_to_file(&self.persist_storage_records)?;
         }
+
+        self.storage_manager
+            .write_persist_storage_records_to_file(&self.persist_storage_records)?;
 
         self.storage_manager.apply_staged_ota_flags()?;
 
@@ -237,11 +221,11 @@ impl Aconfigd {
                 &default_flag_info,
             )?;
 
-            self.storage_manager
-                .write_persist_storage_records_to_file(&self.persist_storage_records)?;
-
             self.storage_manager.apply_all_staged_overrides(container)?;
         }
+
+        self.storage_manager
+            .write_persist_storage_records_to_file(&self.persist_storage_records)?;
 
         Ok(())
     }
@@ -1011,6 +995,7 @@ mod tests {
         flag.set_is_readwrite(true);
         flag.set_has_server_override(false);
         flag.set_has_local_override(false);
+        flag.set_has_boot_local_override(false);
         assert_eq!(flags.flags[0], flag);
 
         flag.set_flag_name("enabled_ro".to_string());
@@ -1126,7 +1111,7 @@ mod tests {
         assert!(aconfigd.persist_storage_records.exists());
         let pb = read_pb_from_file::<ProtoPersistStorageRecords>(&aconfigd.persist_storage_records)
             .unwrap();
-        assert_eq!(pb.records.len(), 3);
+        assert_eq!(pb.records.len(), 4);
 
         for container in ["system", "system_ext", "product", "vendor"] {
             let aconfig_dir = PathBuf::from("/".to_string() + container + "/etc/aconfig");
@@ -1154,7 +1139,7 @@ mod tests {
             assert!(local_overrides.exists());
 
             let mut entry = ProtoPersistStorageRecord::new();
-            entry.set_version(1);
+            entry.set_version(2);
             entry.set_container(container.to_string());
             entry.set_package_map(default_package_map.display().to_string());
             entry.set_flag_map(default_flag_map.display().to_string());
