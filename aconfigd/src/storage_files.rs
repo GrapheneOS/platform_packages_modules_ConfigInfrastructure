@@ -15,8 +15,8 @@
  */
 
 use crate::utils::{
-    copy_file, copy_file_without_fsync, get_files_digest, read_pb_from_file, remove_file,
-    write_pb_to_file,
+    copy_file, copy_file_without_fsync, get_file_mtime, get_files_digest, read_pb_from_file,
+    remove_file, write_pb_to_file,
 };
 use crate::AconfigdError;
 use aconfig_storage_file::{
@@ -562,6 +562,7 @@ impl StorageFiles {
                         value: value.to_string(),
                     });
                 }
+
                 set_boolean_flag_value(file, context.flag_index, value == "true").map_err(
                     |errmsg| AconfigdError::FailToSetFlagValue {
                         flag: context.package.to_string() + "." + &context.flag,
@@ -625,10 +626,21 @@ impl StorageFiles {
         }
 
         let flag_val_file = self.get_persist_flag_val()?;
-        Self::set_flag_value_to_file(flag_val_file, context, value)?;
+        let current_value =
+            get_boolean_flag_value(flag_val_file, context.flag_index).map_err(|errmsg| {
+                AconfigdError::FailToGetFlagValue {
+                    flag: context.package.to_string() + "." + &context.flag,
+                    errmsg,
+                }
+            })?;
+        if current_value != (value == "true") {
+            Self::set_flag_value_to_file(flag_val_file, context, value)?;
+        }
 
-        let flag_info_file = self.get_persist_flag_info()?;
-        Self::set_flag_has_server_override_to_file(flag_info_file, context, true)?;
+        if (attribute & FlagInfoBit::HasServerOverride as u8) == 0 {
+            let flag_info_file = self.get_persist_flag_info()?;
+            Self::set_flag_has_server_override_to_file(flag_info_file, context, true)?;
+        }
 
         Ok(())
     }
@@ -651,28 +663,37 @@ impl StorageFiles {
             });
         }
 
-        let mut exist = false;
         let mut pb =
             read_pb_from_file::<ProtoLocalFlagOverrides>(&self.storage_record.local_overrides)?;
-        for entry in &mut pb.overrides {
-            if entry.package_name() == context.package && entry.flag_name() == context.flag {
-                entry.set_flag_value(String::from(value));
-                exist = true;
-                break;
+        match pb.overrides.iter_mut().find(|entry| {
+            entry.package_name() == context.package && entry.flag_name() == context.flag
+        }) {
+            Some(entry) => {
+                if entry.flag_value() != value {
+                    entry.set_flag_value(String::from(value));
+                    write_pb_to_file::<ProtoLocalFlagOverrides>(
+                        &pb,
+                        &self.storage_record.local_overrides,
+                    )?;
+                }
+            }
+            None => {
+                let mut new_entry = ProtoFlagOverride::new();
+                new_entry.set_package_name(context.package.clone());
+                new_entry.set_flag_name(context.flag.clone());
+                new_entry.set_flag_value(String::from(value));
+                pb.overrides.push(new_entry);
+                write_pb_to_file::<ProtoLocalFlagOverrides>(
+                    &pb,
+                    &self.storage_record.local_overrides,
+                )?;
             }
         }
-        if !exist {
-            let mut new_entry = ProtoFlagOverride::new();
-            new_entry.set_package_name(context.package.clone());
-            new_entry.set_flag_name(context.flag.clone());
-            new_entry.set_flag_value(String::from(value));
-            pb.overrides.push(new_entry);
+
+        if (attribute & FlagInfoBit::HasLocalOverride as u8) == 0 {
+            let flag_info_file = self.get_persist_flag_info()?;
+            Self::set_flag_has_local_override_to_file(flag_info_file, context, true)?;
         }
-
-        write_pb_to_file::<ProtoLocalFlagOverrides>(&pb, &self.storage_record.local_overrides)?;
-
-        let flag_info_file = self.get_persist_flag_info()?;
-        Self::set_flag_has_local_override_to_file(flag_info_file, context, true)?;
 
         Ok(())
     }
@@ -712,8 +733,38 @@ impl StorageFiles {
         Ok(())
     }
 
+    /// Check if current boot files can be reused
+    fn reuse_boot_storage_files(&self) -> Result<bool, AconfigdError> {
+        if !self.storage_record.boot_flag_val.exists()
+            || !self.storage_record.boot_flag_info.exists()
+        {
+            return Ok(false);
+        }
+
+        let persist_mtime = *[
+            get_file_mtime(&self.storage_record.persist_flag_val)?,
+            get_file_mtime(&self.storage_record.persist_flag_info)?,
+            get_file_mtime(&self.storage_record.local_overrides)?,
+        ]
+        .iter()
+        .max()
+        .unwrap();
+
+        let boot_mtime = std::cmp::min(
+            get_file_mtime(&self.storage_record.boot_flag_val)?,
+            get_file_mtime(&self.storage_record.boot_flag_info)?,
+        );
+
+        Ok(boot_mtime > persist_mtime)
+    }
+
     /// Apply both server and local overrides
     pub(crate) fn apply_all_staged_overrides(&mut self) -> Result<(), AconfigdError> {
+        if self.reuse_boot_storage_files()? {
+            debug!("reuse boot storage files for container {}", &self.storage_record.container);
+            return Ok(());
+        }
+
         debug!("apply staged server overrides for container {}", &self.storage_record.container);
         copy_file_without_fsync(
             &self.storage_record.persist_flag_val,
@@ -1090,6 +1141,7 @@ impl StorageFiles {
 mod tests {
     use super::*;
     use crate::test_utils::{has_same_content, ContainerMock, StorageRootDirMock};
+    use crate::utils::get_file_mtime;
     use aconfig_storage_file::StoredFlagType;
 
     fn create_mock_storage_files(
@@ -1383,6 +1435,18 @@ mod tests {
         assert_eq!(&storage_files.get_server_flag_value(&context).unwrap(), "false");
         let attribute = storage_files.get_flag_attribute(&context).unwrap();
         assert!(attribute & (FlagInfoBit::HasServerOverride as u8) != 0);
+
+        let val_metadata = std::fs::metadata(&storage_files.storage_record.boot_flag_val).unwrap();
+        let info_metadata =
+            std::fs::metadata(&storage_files.storage_record.boot_flag_info).unwrap();
+        let val_mtime = val_metadata.modified().unwrap();
+        let info_mtime = info_metadata.modified().unwrap();
+        storage_files.stage_server_override(&context, "false").unwrap();
+        let val_metadata = std::fs::metadata(&storage_files.storage_record.boot_flag_val).unwrap();
+        let info_metadata =
+            std::fs::metadata(&storage_files.storage_record.boot_flag_info).unwrap();
+        assert_eq!(val_mtime, val_metadata.modified().unwrap());
+        assert_eq!(info_mtime, info_metadata.modified().unwrap());
     }
 
     #[test]
@@ -1397,6 +1461,25 @@ mod tests {
         assert_eq!(&storage_files.get_local_flag_value(&context).unwrap(), "false");
         let attribute = storage_files.get_flag_attribute(&context).unwrap();
         assert!(attribute & (FlagInfoBit::HasLocalOverride as u8) != 0);
+
+        storage_files.stage_local_override(&context, "true").unwrap();
+        assert_eq!(&storage_files.get_local_flag_value(&context).unwrap(), "true");
+        let attribute = storage_files.get_flag_attribute(&context).unwrap();
+        assert!(attribute & (FlagInfoBit::HasLocalOverride as u8) != 0);
+
+        let val_metadata =
+            std::fs::metadata(&storage_files.storage_record.local_overrides).unwrap();
+        let info_metadata =
+            std::fs::metadata(&storage_files.storage_record.boot_flag_info).unwrap();
+        let val_mtime = val_metadata.modified().unwrap();
+        let info_mtime = info_metadata.modified().unwrap();
+        storage_files.stage_local_override(&context, "true").unwrap();
+        let val_metadata =
+            std::fs::metadata(&storage_files.storage_record.local_overrides).unwrap();
+        let info_metadata =
+            std::fs::metadata(&storage_files.storage_record.boot_flag_info).unwrap();
+        assert_eq!(val_mtime, val_metadata.modified().unwrap());
+        assert_eq!(info_mtime, info_metadata.modified().unwrap());
     }
 
     #[test]
@@ -1438,6 +1521,42 @@ mod tests {
 
         assert_eq!(storage_files.get_boot_flag_value(&context_one).unwrap(), "false");
         assert_eq!(storage_files.get_boot_flag_value(&context_two).unwrap(), "true");
+
+        // reuse boot file case 1: reuse
+        let boot_val_mtime = get_file_mtime(&storage_files.storage_record.boot_flag_val).unwrap();
+        let boot_info_mtime = get_file_mtime(&storage_files.storage_record.boot_flag_info).unwrap();
+        storage_files.apply_all_staged_overrides().unwrap();
+        assert_eq!(
+            boot_val_mtime,
+            get_file_mtime(&storage_files.storage_record.boot_flag_val).unwrap()
+        );
+        assert_eq!(
+            boot_info_mtime,
+            get_file_mtime(&storage_files.storage_record.boot_flag_info).unwrap()
+        );
+
+        // reuse boot file case 2: persist file is newer, do not reuse
+        let f = std::fs::File::open(&storage_files.storage_record.persist_flag_val).unwrap();
+        f.set_modified(std::time::SystemTime::now()).unwrap();
+        storage_files.apply_all_staged_overrides().unwrap();
+        let new_boot_val_mtime =
+            get_file_mtime(&storage_files.storage_record.boot_flag_val).unwrap();
+        let new_boot_info_mtime =
+            get_file_mtime(&storage_files.storage_record.boot_flag_info).unwrap();
+        assert!(new_boot_val_mtime > boot_val_mtime);
+        assert!(new_boot_info_mtime > boot_info_mtime);
+
+        // reuse boot file case 3: no boot file
+        remove_file(&storage_files.storage_record.boot_flag_val).unwrap();
+        storage_files.apply_all_staged_overrides().unwrap();
+        assert!(
+            get_file_mtime(&storage_files.storage_record.boot_flag_val).unwrap()
+                > new_boot_val_mtime
+        );
+        assert!(
+            get_file_mtime(&storage_files.storage_record.boot_flag_info).unwrap()
+                > new_boot_info_mtime
+        );
     }
 
     #[test]
@@ -1655,7 +1774,7 @@ mod tests {
             is_readwrite: true,
             has_server_override: true,
             has_local_override: true,
-            has_boot_local_override: false,
+            has_boot_local_override: true,
         };
         assert_eq!(flags[0], flag);
 
@@ -1736,7 +1855,7 @@ mod tests {
             is_readwrite: true,
             has_server_override: true,
             has_local_override: true,
-            has_boot_local_override: false,
+            has_boot_local_override: true,
         };
         assert_eq!(flags[3], flag);
     }
