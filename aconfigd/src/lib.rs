@@ -128,6 +128,12 @@ pub enum AconfigdError {
     #[error("fail to get metadata of file {}: {:?}", .file, .errmsg)]
     FailToGetFileMetadata { file: String, errmsg: std::io::Error },
 
+    #[error("fail to get last modified time of file {}: {:?}", .file, .errmsg)]
+    FailToGetFileModifiedTime { file: String, errmsg: std::io::Error },
+
+    #[error("fail to get system time duration since epoch for file {}: {:?}", .file, .errmsg)]
+    FailToGetSystemTimeDuration { file: String, errmsg: std::time::SystemTimeError },
+
     #[error("fail to read /apex dir: {:?}", .errmsg)]
     FailToReadApexDir { errmsg: std::io::Error },
 
