@@ -20,6 +20,7 @@ use std::fs::File;
 use std::io::Read;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Set file permission
 pub(crate) fn set_file_permission(file: &Path, mode: u32) -> Result<(), AconfigdError> {
@@ -171,6 +172,21 @@ pub(crate) fn get_files_digest(paths: &[&Path]) -> Result<String, AconfigdError>
         xdigest.push_str(format!("{:02x}", x).as_str());
     }
     Ok(xdigest)
+}
+
+/// Get file last modified time (macro seconds) with respect to UNIX_EPOCH
+pub(crate) fn get_file_mtime(file: &Path) -> Result<u128, AconfigdError> {
+    let metadata = std::fs::metadata(file).map_err(|errmsg| {
+        AconfigdError::FailToGetFileMetadata { file: file.display().to_string(), errmsg }
+    })?;
+    let mtime = metadata.modified().map_err(|errmsg| AconfigdError::FailToGetFileModifiedTime {
+        file: file.display().to_string(),
+        errmsg,
+    })?;
+    let duration = mtime.duration_since(UNIX_EPOCH).map_err(|errmsg| {
+        AconfigdError::FailToGetSystemTimeDuration { file: file.display().to_string(), errmsg }
+    })?;
+    Ok(duration.as_nanos())
 }
 
 #[cfg(test)]
