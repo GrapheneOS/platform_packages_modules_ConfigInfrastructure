@@ -39,6 +39,7 @@ import android.compat.annotation.UnsupportedAppUsage;
  *
  * @hide
  */
+@android.ravenwood.annotation.RavenwoodKeepWholeClass
 public class AconfigPackageInternal {
 
     private final FlagValueList mFlagValueList;
