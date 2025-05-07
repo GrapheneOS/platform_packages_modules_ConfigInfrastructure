@@ -16,6 +16,7 @@ package {
     default_applicable_licenses: ["Android-Apache-2.0"],
 }
 
+// FlagManager isn't supported on Ravenwood, so there's no ravenwood version for it.
 android_test {
     name: "FlagManagerUnitTests",
     srcs: [
@@ -41,34 +42,45 @@ android_test {
     test_config: "AndroidUnitTest.xml",
 }
 
-android_test {
-    name: "AconfigPublicApiCtsTests",
+java_defaults {
+    name: "AconfigPublicApiCtsTests_defaults",
     srcs: [
         "src/AconfigPublicApiCtsTests.java",
     ],
     static_libs: [
-        "aconfig_device_paths_java",
         "androidx.test.rules",
         "aconfig_storage_file_java",
         "configinfra_framework_flags_java_lib",
         "junit",
         "flag-junit",
+        "ravenwood-junit",
     ],
     libs: [
         "framework-configinfrastructure.impl",
     ],
     sdk_version: "module_current",
+    jarjar_rules: ":framework-configinfrastructure-jarjar",
+    team: "trendy_team_android_core_experiments",
+}
+
+android_test {
+    name: "AconfigPublicApiCtsTests",
+    defaults: ["AconfigPublicApiCtsTests_defaults"],
     test_suites: [
         "general-tests",
         "cts",
     ],
-    jarjar_rules: ":framework-configinfrastructure-jarjar",
-    team: "trendy_team_android_core_experiments",
     test_config: "AndroidCtsTest.xml",
 }
 
-android_test {
-    name: "AconfigPackageTests",
+android_ravenwood_test {
+    name: "AconfigPublicApiCtsTestsRavenwood",
+    defaults: ["AconfigPublicApiCtsTests_defaults"],
+    auto_gen_config: true,
+}
+
+java_defaults {
+    name: "AconfigPackageTests_default",
     srcs: [
         "src/AconfigPackageInternalTests.java",
         "src/AconfigPackageTests.java",
@@ -78,14 +90,35 @@ android_test {
         "androidx.test.rules",
         "aconfig_storage_file_java",
         "junit",
+        "ravenwood-junit",
     ],
     libs: [
         "framework-configinfrastructure.impl",
     ],
+    jarjar_rules: ":framework-configinfrastructure-jarjar",
+    team: "trendy_team_android_core_experiments",
+
+    // Commented out for AconfigPackageTestsRavenwood, see below comment.
+    // sdk_version: "module_current",
+}
+
+android_test {
+    name: "AconfigPackageTests",
+    defaults: ["AconfigPackageTests_default"],
     sdk_version: "module_current",
     test_suites: [
         "general-tests",
     ],
-    jarjar_rules: ":framework-configinfrastructure-jarjar",
-    team: "trendy_team_android_core_experiments",
+}
+
+android_ravenwood_test {
+    name: "AconfigPackageTestsRavenwood",
+    defaults: ["AconfigPackageTests_default"],
+    auto_gen_config: true,
+
+    // We can't have a sdk_version here, because aconfig_device_paths_java_util's
+    // sdk_version isn't actually compatible with "module_current".
+    // AconfigPackageTests is using aconfig_device_paths_java_util but
+    // that's allowed because of a soong bug: b/413039369
+    // sdk_version: "module_current",
 }

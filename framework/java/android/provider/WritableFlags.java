@@ -575,6 +575,7 @@ final class WritableFlags {
                 "runtime_native/usap_pool_size_max",
                 "runtime_native/usap_pool_size_min",
                 "runtime_native/use_app_image_startup_cache",
+                "serial/android.hardware.serial.flags.enable_serial_api",
                 "settings_stats/boolean_whitelist",
                 "settings_stats/float_whitelist",
                 "settings_stats/GlobalFeature__boolean_whitelist",

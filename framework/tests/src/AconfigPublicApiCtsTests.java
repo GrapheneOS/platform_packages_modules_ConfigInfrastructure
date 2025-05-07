@@ -46,6 +46,7 @@ public class AconfigPublicApiCtsTests {
             DeviceFlagsValueProvider.createCheckFlagsRule();
 
     @Test
+    @android.platform.test.annotations.DisabledOnRavenwood(blockedBy = FlagManager.class)
     @RequiresFlagsEnabled(Flags.FLAG_NEW_STORAGE_PUBLIC_API)
     public void testTestProcessCannotCallWriteApis() throws IOException {
         FlagManager flagManager =
