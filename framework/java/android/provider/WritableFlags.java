@@ -319,6 +319,7 @@ final class WritableFlags {
                 "jobscheduler/conn_transport_batch_threshold",
                 "jobscheduler/enable_api_quotas",
                 "jobscheduler/fc_applied_constraints",
+                "jobscheduler/min_linear_backoff_time_ms",
                 "jobscheduler/min_ready_cpu_only_jobs_count",
                 "jobscheduler/min_ready_non_active_jobs_count",
                 "jobscheduler/qc_allowed_time_per_period_rare_ms",
