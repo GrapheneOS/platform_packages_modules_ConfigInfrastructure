@@ -29,6 +29,7 @@ import android.util.AndroidRuntimeException;
  */
 @SystemApi
 @FlaggedApi(Flags.FLAG_NEW_STORAGE_PUBLIC_API)
+@android.ravenwood.annotation.RavenwoodKeepWholeClass
 public class AconfigStorageWriteException extends AndroidRuntimeException {
     @FlaggedApi(Flags.FLAG_NEW_STORAGE_PUBLIC_API)
     public AconfigStorageWriteException(@NonNull String message) {

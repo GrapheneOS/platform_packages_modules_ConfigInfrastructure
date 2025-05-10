@@ -46,6 +46,7 @@ bootclasspath_fragment {
             "android.provider.flags",
             "android.provider.internal.aconfig.storage",
             "android.provider.internal.modules.utils.build",
+            "android.provider.internal.modules.utils.ravenwood",
 
             "android.os.flagging",
             "android.provider.x.android.provider.flags",

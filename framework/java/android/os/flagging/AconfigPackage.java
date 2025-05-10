@@ -29,6 +29,8 @@ import android.annotation.NonNull;
 import android.os.Build;
 import android.util.Log;
 
+import com.android.modules.utils.ravenwood.RavenwoodHelper;
+
 import java.io.Closeable;
 import java.io.File;
 import java.nio.MappedByteBuffer;
@@ -49,14 +51,40 @@ import java.util.Map;
  * of this class should be {@link #load loaded}.
  */
 @FlaggedApi(FLAG_NEW_STORAGE_PUBLIC_API)
+@android.ravenwood.annotation.RavenwoodKeepWholeClass
 public class AconfigPackage {
     private static final String TAG = "AconfigPackage";
-    private static final String MAP_PATH = "/metadata/aconfig/maps/";
-    private static final String BOOT_PATH = "/metadata/aconfig/boot/";
+
+    private static final String MAP_PATH = getStorageRootPath() + "/metadata/aconfig/maps/";
+    private static final String BOOT_PATH =  getStorageRootPath() + "/metadata/aconfig/boot/";
+
     private static final String PMAP_FILE_EXT = ".package.map";
 
+    /** Returns "" on the device side, but on Ravenwood, we use a storage root path. */
+    @android.ravenwood.annotation.RavenwoodReplace
+    private static String getStorageRootPath() {
+        return "";
+    }
+
+    private static String getStorageRootPath$ravenwood() {
+        return RavenwoodHelper.getRavenwoodAconfigStoragePath();
+    }
+
     private static final boolean READ_PLATFORM_FROM_PLATFORM_API =
-            readPlatformFromPlatformApi() && Build.VERSION.SDK_INT > 35;
+            getReadPlatformFromPlatformApi();
+
+    /**
+     * On ravenwood, we don't use {@link PlatformAconfigPackage} and read all the storage files
+     * in the storage directory directly by this class.
+     */
+    @android.ravenwood.annotation.RavenwoodReplace
+    private static boolean getReadPlatformFromPlatformApi() {
+        return readPlatformFromPlatformApi() && Build.VERSION.SDK_INT > 35;
+    }
+
+    private static boolean getReadPlatformFromPlatformApi$ravenwood() {
+        return false; // Don't use PlatformAconfigPackage.
+    }
 
     private FlagTable mFlagTable;
     private FlagValueList mFlagValueList;
