@@ -16,6 +16,25 @@ package {
     default_applicable_licenses: ["Android-Apache-2.0"],
 }
 
+android_ravenwood_test {
+    name: "InternalArrayUtilsTest",
+    srcs: [
+        "src/com/android/internal/util/ArrayUtilsTest.java",
+    ],
+    static_libs: [
+        "androidx.test.rules",
+        "junit",
+        "flag-junit",
+        "modules-utils-arrayutils",
+    ],
+    sdk_version: "module_current",
+    test_suites: [
+        "general-tests",
+        "mts-configinfrastructure",
+    ],
+    team: "trendy_team_android_core_experiments",
+}
+
 // FlagManager isn't supported on Ravenwood, so there's no ravenwood version for it.
 android_test {
     name: "FlagManagerUnitTests",
