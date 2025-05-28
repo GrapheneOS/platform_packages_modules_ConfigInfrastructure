@@ -115,6 +115,10 @@ apex {
     apps: [
         "DeviceConfigServiceResources",
     ],
+    licenses: [
+        "Android-Apache-2.0",
+        "opensourcerequest",
+    ],
 }
 
 sdk {
