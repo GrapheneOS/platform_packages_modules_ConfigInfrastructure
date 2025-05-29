@@ -544,6 +544,7 @@ final class WritableFlags {
                 "rollback_boot/rollback_lifetime_in_millis",
                 "rollback/containing",
                 "rollback/enable_rollback_timeout",
+                "rollback/observer_rollback_availability_in_millis",
                 "rollback/watchdog_explicit_health_check_enabled",
                 "rollback/watchdog_request_timeout_millis",
                 "rollback/watchdog_trigger_failure_count",
