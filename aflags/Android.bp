@@ -33,8 +33,10 @@ rust_binary {
     min_sdk_version: "34",
 }
 
-rust_test_host {
+rust_test {
     name: "aflags_updatable.test",
     defaults: ["aflags_updatable.defaults"],
+    rustlibs: ["librand"],
     test_suites: ["general-tests"],
+    require_root: true
 }

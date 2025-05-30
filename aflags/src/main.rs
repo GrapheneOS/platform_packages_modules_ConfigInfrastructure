@@ -20,6 +20,7 @@ use anyhow::{anyhow, ensure, Result};
 use clap::Parser;
 
 mod aconfig_storage_source;
+mod device_config_source;
 use aconfig_storage_source::AconfigStorageSource;
 
 mod load_protos;
@@ -48,6 +49,14 @@ enum ValuePickedFrom {
     Default,
     Server,
     Local,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+enum FlagStorageBackend {
+    Unspecified,
+    None,
+    Aconfigd,
+    DeviceConfig,
 }
 
 impl std::fmt::Display for ValuePickedFrom {
@@ -105,6 +114,7 @@ struct Flag {
     staged_value: Option<FlagValue>,
     permission: FlagPermission,
     value_picked_from: ValuePickedFrom,
+    storage_backend: FlagStorageBackend,
 }
 
 impl Flag {
@@ -272,7 +282,6 @@ fn set_flag(qualified_name: &str, value: &str, immediate: bool) -> Result<()> {
             format!("could not write flag '{qualified_name}', it is read-only for the current release configuration."));
 
     AconfigStorageSource::override_flag(&flag.namespace, qualified_name, value, immediate)?;
-
     Ok(())
 }
 
@@ -369,6 +378,7 @@ mod tests {
                 permission: FlagPermission::ReadWrite,
                 value_picked_from: ValuePickedFrom::Default,
                 container: "system".to_string(),
+                storage_backend: FlagStorageBackend::Aconfigd,
             },
             Flag {
                 namespace: "namespace".to_string(),
@@ -379,6 +389,7 @@ mod tests {
                 permission: FlagPermission::ReadWrite,
                 value_picked_from: ValuePickedFrom::Default,
                 container: "not_system".to_string(),
+                storage_backend: FlagStorageBackend::Aconfigd,
             },
             Flag {
                 namespace: "namespace".to_string(),
@@ -389,6 +400,7 @@ mod tests {
                 permission: FlagPermission::ReadWrite,
                 value_picked_from: ValuePickedFrom::Default,
                 container: "system".to_string(),
+                storage_backend: FlagStorageBackend::Aconfigd,
             },
         ];
 
@@ -407,6 +419,7 @@ mod tests {
                 permission: FlagPermission::ReadWrite,
                 value_picked_from: ValuePickedFrom::Default,
                 container: "system".to_string(),
+                storage_backend: FlagStorageBackend::Aconfigd,
             },
             Flag {
                 namespace: "namespace".to_string(),
@@ -417,6 +430,7 @@ mod tests {
                 permission: FlagPermission::ReadWrite,
                 value_picked_from: ValuePickedFrom::Default,
                 container: "not_system".to_string(),
+                storage_backend: FlagStorageBackend::Aconfigd,
             },
             Flag {
                 namespace: "namespace".to_string(),
@@ -427,6 +441,7 @@ mod tests {
                 permission: FlagPermission::ReadWrite,
                 value_picked_from: ValuePickedFrom::Default,
                 container: "system".to_string(),
+                storage_backend: FlagStorageBackend::Aconfigd,
             },
         ];
 

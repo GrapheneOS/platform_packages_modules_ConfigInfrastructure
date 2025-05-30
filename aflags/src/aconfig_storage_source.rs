@@ -1,6 +1,6 @@
 use crate::load_protos;
 use crate::{Flag, FlagSource};
-use crate::{FlagPermission, FlagValue, ValuePickedFrom};
+use crate::{FlagPermission, FlagStorageBackend, FlagValue, ValuePickedFrom};
 use aconfigd_protos::{
     ProtoFlagOverrideMessage, ProtoFlagOverrideType, ProtoFlagQueryReturnMessage,
     ProtoListStorageMessage, ProtoListStorageMessageMsg, ProtoRemoveLocalOverrideMessage,
@@ -104,6 +104,7 @@ fn convert(msg: ProtoFlagQueryReturnMessage, containers: &HashMap<String, String
             .to_string(),
         // TODO: remove once DeviceConfig is not in the CLI.
         namespace: "-".to_string(),
+        storage_backend: FlagStorageBackend::Unspecified,
     })
 }
 
@@ -223,7 +224,11 @@ impl FlagSource for AconfigStorageSource {
             socket_flags?.into_iter().map(|p| (p.qualified_name(), p)).collect();
         flags.iter_mut().for_each(|flag| {
             if let Some(socket_flag) = name_to_socket_flag.get(&flag.qualified_name()) {
+                // socket flags do not contain storage backend information, copy this
+                // field and assign back to preserve this information
+                let storage_backend = flag.storage_backend.clone();
                 *flag = socket_flag.clone();
+                flag.storage_backend = storage_backend;
             }
         });
 

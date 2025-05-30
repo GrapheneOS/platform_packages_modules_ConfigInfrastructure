@@ -16,3 +16,8 @@ aconfig_storage_read_api = { version = "0.1.0", path = "../../../../build/make/t
 clap = {version = "4.5.2" }
 aconfig_device_paths = { version = "0.1.0", path = "../../../../build/make/tools/aconfig/aconfig_device_paths" }
 aconfig_flags = { version = "0.1.0", path = "../../../../build/make/tools/aconfig/aconfig_flags" }
+rand = "0.9.1"
+
+[features]
+default = ["cargo"]
+cargo = []
