@@ -224,11 +224,13 @@ impl FlagSource for AconfigStorageSource {
             socket_flags?.into_iter().map(|p| (p.qualified_name(), p)).collect();
         flags.iter_mut().for_each(|flag| {
             if let Some(socket_flag) = name_to_socket_flag.get(&flag.qualified_name()) {
-                // socket flags do not contain storage backend information, copy this
-                // field and assign back to preserve this information
+                // socket flags do not contain storage backend and namespace  information,
+                // copy these fields and assign back
+                let namespace = flag.namespace.clone();
                 let storage_backend = flag.storage_backend.clone();
                 *flag = socket_flag.clone();
                 flag.storage_backend = storage_backend;
+                flag.namespace = namespace;
             }
         });
 
