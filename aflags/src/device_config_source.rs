@@ -25,7 +25,7 @@ use std::str;
 pub struct DeviceConfigSource {}
 
 #[allow(dead_code)]
-fn parse_device_config_output(raw: &str) -> Result<HashMap<String, FlagValue>> {
+pub(crate) fn parse_device_config_output(raw: &str) -> Result<HashMap<String, FlagValue>> {
     let mut flags = HashMap::new();
     let regex = Regex::new(r"(?m)^([[[:alnum:]]:_/\.]+)=(true|false)$")?;
     for capture in regex.captures_iter(raw) {
@@ -39,7 +39,7 @@ fn parse_device_config_output(raw: &str) -> Result<HashMap<String, FlagValue>> {
     Ok(flags)
 }
 
-fn execute_device_config_command(command: &[&str]) -> Result<String> {
+pub(crate) fn execute_device_config_command(command: &[&str]) -> Result<String> {
     let output = Command::new("/system/bin/device_config").args(command).output()?;
     if !output.status.success() {
         let reason = match output.status.code() {
@@ -126,6 +126,9 @@ android.flag_two=nonsense
         let flag_value =
             flags.get(&format!("{namespace}:aflags_test_package.aflags_test_flag")).unwrap();
         assert_eq!(*flag_value, FlagValue::Disabled);
+
+        DeviceConfigSource::unset_flag(&namespace, "aflags_test_package.aflags_test_flag", false)
+            .unwrap();
     }
 
     #[test]
