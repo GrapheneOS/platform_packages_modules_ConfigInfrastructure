@@ -136,6 +136,7 @@ final class WritableFlags {
                 "android/system_gesture_exclusion_limit_dp",
                 "app_cloning/cloned_apps_enabled",
                 "app_cloning/enable_app_cloning_building_blocks",
+                "app_compat/appcompat_sysprop_override_pkgs",
                 "app_compat/hidden_api_access_statslog_sampling_rate",
                 "app_compat/hidden_api_log_sampling_rate",
                 "app_compat/hidden_api_statslog_sampling_rate",
