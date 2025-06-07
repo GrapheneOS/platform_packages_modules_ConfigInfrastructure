@@ -20,7 +20,9 @@ use anyhow::{anyhow, ensure, Result};
 use clap::Parser;
 
 mod aconfig_storage_source;
+mod device_config_source;
 use aconfig_storage_source::AconfigStorageSource;
+use device_config_source::DeviceConfigSource;
 
 mod load_protos;
 
@@ -48,6 +50,14 @@ enum ValuePickedFrom {
     Default,
     Server,
     Local,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+enum FlagStorageBackend {
+    Unspecified,
+    None,
+    Aconfigd,
+    DeviceConfig,
 }
 
 impl std::fmt::Display for ValuePickedFrom {
@@ -105,6 +115,7 @@ struct Flag {
     staged_value: Option<FlagValue>,
     permission: FlagPermission,
     value_picked_from: ValuePickedFrom,
+    storage_backend: FlagStorageBackend,
 }
 
 impl Flag {
@@ -130,10 +141,6 @@ trait FlagSource {
         immediate: bool,
     ) -> Result<()>;
     fn unset_flag(namespace: &str, qualified_name: &str, immediate: bool) -> Result<()>;
-}
-
-enum FlagSourceType {
-    AconfigStorage,
 }
 
 const ABOUT_TEXT: &str = "Tool for reading and writing flags.
@@ -262,24 +269,45 @@ fn format_flag_row(flag: &Flag, info: &PaddingInfo) -> String {
     )
 }
 
-fn set_flag(qualified_name: &str, value: &str, immediate: bool) -> Result<()> {
+fn get_flag(qualified_name: &str) -> Result<Flag> {
     let flags_binding = AconfigStorageSource::list_flags()?;
     let flag = flags_binding.iter().find(|f| f.qualified_name() == qualified_name).ok_or(
         anyhow!("no aconfig flag '{qualified_name}'. Does the flag have an .aconfig definition?"),
     )?;
+    Ok(flag.clone())
+}
 
-    ensure!(flag.permission == FlagPermission::ReadWrite,
-            format!("could not write flag '{qualified_name}', it is read-only for the current release configuration."));
+fn set_flag(flag: &Flag, value: &str, immediate: bool) -> Result<()> {
+    ensure!(
+        flag.permission == FlagPermission::ReadWrite,
+        format!(
+            "could not write flag '{}', it is read-only for the current release configuration.",
+            flag.qualified_name()
+        )
+    );
 
-    AconfigStorageSource::override_flag(&flag.namespace, qualified_name, value, immediate)?;
-
+    AconfigStorageSource::override_flag(&flag.namespace, &flag.qualified_name(), value, immediate)?;
+    if flag.storage_backend == FlagStorageBackend::DeviceConfig {
+        DeviceConfigSource::override_flag(
+            &flag.namespace,
+            &flag.qualified_name(),
+            value,
+            immediate,
+        )?;
+    }
     Ok(())
 }
 
-fn list(source_type: FlagSourceType, container: Option<String>) -> Result<String> {
-    let flags_unfiltered = match source_type {
-        FlagSourceType::AconfigStorage => AconfigStorageSource::list_flags()?,
-    };
+fn unset(flag: &Flag, immediate: bool) -> Result<()> {
+    AconfigStorageSource::unset_flag(&flag.namespace, &flag.qualified_name(), immediate)?;
+    if flag.storage_backend == FlagStorageBackend::DeviceConfig {
+        DeviceConfigSource::unset_flag(&flag.namespace, &flag.qualified_name(), immediate)?;
+    }
+    Ok(())
+}
+
+fn list(container: Option<String>) -> Result<String> {
+    let flags_unfiltered = AconfigStorageSource::list_flags()?;
 
     if let Some(ref c) = container {
         ensure!(
@@ -317,31 +345,25 @@ fn list(source_type: FlagSourceType, container: Option<String>) -> Result<String
     Ok(result)
 }
 
-fn unset(qualified_name: &str, immediate: bool) -> Result<()> {
-    let flags_binding = AconfigStorageSource::list_flags()?;
-    let flag = flags_binding.iter().find(|f| f.qualified_name() == qualified_name).ok_or(
-        anyhow!("no aconfig flag '{qualified_name}'. Does the flag have an .aconfig definition?"),
-    )?;
-
-    AconfigStorageSource::unset_flag(&flag.namespace, qualified_name, immediate)
-}
-
 fn main() -> Result<()> {
     ensure!(nix::unistd::Uid::current().is_root(), "must be root");
 
     let cli = Cli::parse();
     let output = match cli.command {
-        Command::List { container } => list(FlagSourceType::AconfigStorage, container)
-            .map_err(|err| anyhow!("could not list flags: {err}"))
-            .map(Some),
+        Command::List { container } => {
+            list(container).map_err(|err| anyhow!("could not list flags: {err}")).map(Some)
+        }
         Command::Enable { qualified_name, immediate } => {
-            set_flag(&qualified_name, "true", immediate).map(|_| None)
+            let flag = get_flag(&qualified_name)?;
+            set_flag(&flag, "true", immediate).map(|_| None)
         }
         Command::Disable { qualified_name, immediate } => {
-            set_flag(&qualified_name, "false", immediate).map(|_| None)
+            let flag = get_flag(&qualified_name)?;
+            set_flag(&flag, "false", immediate).map(|_| None)
         }
         Command::Unset { qualified_name, immediate } => {
-            unset(&qualified_name, immediate).map(|_| None)
+            let flag = get_flag(&qualified_name)?;
+            unset(&flag, immediate).map(|_| None)
         }
     };
     match output {
@@ -356,6 +378,9 @@ fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::device_config_source::execute_device_config_command;
+    use crate::device_config_source::parse_device_config_output;
+    use rand::Rng;
 
     #[test]
     fn test_filter_container() {
@@ -369,6 +394,7 @@ mod tests {
                 permission: FlagPermission::ReadWrite,
                 value_picked_from: ValuePickedFrom::Default,
                 container: "system".to_string(),
+                storage_backend: FlagStorageBackend::Aconfigd,
             },
             Flag {
                 namespace: "namespace".to_string(),
@@ -379,6 +405,7 @@ mod tests {
                 permission: FlagPermission::ReadWrite,
                 value_picked_from: ValuePickedFrom::Default,
                 container: "not_system".to_string(),
+                storage_backend: FlagStorageBackend::Aconfigd,
             },
             Flag {
                 namespace: "namespace".to_string(),
@@ -389,6 +416,7 @@ mod tests {
                 permission: FlagPermission::ReadWrite,
                 value_picked_from: ValuePickedFrom::Default,
                 container: "system".to_string(),
+                storage_backend: FlagStorageBackend::Aconfigd,
             },
         ];
 
@@ -407,6 +435,7 @@ mod tests {
                 permission: FlagPermission::ReadWrite,
                 value_picked_from: ValuePickedFrom::Default,
                 container: "system".to_string(),
+                storage_backend: FlagStorageBackend::Aconfigd,
             },
             Flag {
                 namespace: "namespace".to_string(),
@@ -417,6 +446,7 @@ mod tests {
                 permission: FlagPermission::ReadWrite,
                 value_picked_from: ValuePickedFrom::Default,
                 container: "not_system".to_string(),
+                storage_backend: FlagStorageBackend::Aconfigd,
             },
             Flag {
                 namespace: "namespace".to_string(),
@@ -427,9 +457,64 @@ mod tests {
                 permission: FlagPermission::ReadWrite,
                 value_picked_from: ValuePickedFrom::Default,
                 container: "system".to_string(),
+                storage_backend: FlagStorageBackend::Aconfigd,
             },
         ];
 
         assert_eq!((Filter { container: None }).apply(&flags).len(), 3);
+    }
+
+    #[test]
+    #[cfg(not(feature = "cargo"))]
+    fn test_set_unset_mainline_beta_flag() {
+        let mut rng = rand::thread_rng();
+        let namespace = rng.gen::<u32>().to_string();
+        let mut flag = Flag {
+            namespace: namespace.clone(),
+            name: String::from("some_flag"),
+            package: String::from("some_package"),
+            container: String::from("system"),
+            value: FlagValue::Disabled,
+            staged_value: None,
+            permission: FlagPermission::ReadWrite,
+            value_picked_from: ValuePickedFrom::Default,
+            storage_backend: FlagStorageBackend::Aconfigd,
+        };
+
+        // negative test to ensure value is not synced over to device config
+        assert!(set_flag(&flag, "false", false).is_ok());
+
+        let result = execute_device_config_command(&["list", &namespace]).unwrap();
+        let flags = parse_device_config_output(&result).unwrap();
+        assert!(!flags.contains_key(&String::from("some_package.some_flag")));
+
+        let result = execute_device_config_command(&["list", "device_config_overrides"]).unwrap();
+        let flags = parse_device_config_output(&result).unwrap();
+        assert!(!flags.contains_key(&format!("{namespace}:some_package.some_flag")));
+
+        // test setting mainline beta flag
+        flag.storage_backend = FlagStorageBackend::DeviceConfig;
+        assert!(set_flag(&flag, "true", false).is_ok());
+
+        let result = execute_device_config_command(&["list", &namespace]).unwrap();
+        let flags = parse_device_config_output(&result).unwrap();
+        let value = flags.get(&String::from("some_package.some_flag")).unwrap();
+        assert_eq!(*value, FlagValue::Enabled);
+
+        let result = execute_device_config_command(&["list", "device_config_overrides"]).unwrap();
+        let flags = parse_device_config_output(&result).unwrap();
+        let value = flags.get(&format!("{namespace}:some_package.some_flag")).unwrap();
+        assert_eq!(*value, FlagValue::Enabled);
+
+        // test unset mainline beta flag
+        assert!(unset(&flag, false).is_ok());
+
+        let result = execute_device_config_command(&["list", &namespace]).unwrap();
+        let flags = parse_device_config_output(&result).unwrap();
+        assert!(!flags.contains_key(&String::from("some_package.some_flag")));
+
+        let result = execute_device_config_command(&["list", "device_config_overrides"]).unwrap();
+        let flags = parse_device_config_output(&result).unwrap();
+        assert!(!flags.contains_key(&format!("{namespace}:some_package.some_flag")));
     }
 }

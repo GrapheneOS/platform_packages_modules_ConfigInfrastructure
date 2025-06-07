@@ -1,6 +1,7 @@
-use crate::{Flag, FlagPermission, FlagValue, ValuePickedFrom};
+use crate::{Flag, FlagPermission, FlagStorageBackend, FlagValue, ValuePickedFrom};
 use aconfig_protos::ProtoFlagPermission as ProtoPermission;
 use aconfig_protos::ProtoFlagState as ProtoState;
+use aconfig_protos::ProtoFlagStorageBackend;
 use aconfig_protos::ProtoParsedFlag;
 use aconfig_protos::ProtoParsedFlags;
 use anyhow::Result;
@@ -34,6 +35,13 @@ fn convert_parsed_flag(path: &Path, flag: &ProtoParsedFlag) -> Flag {
         ProtoPermission::READ_WRITE => FlagPermission::ReadWrite,
     };
 
+    let storage_backend = match flag.metadata.storage() {
+        ProtoFlagStorageBackend::NONE => FlagStorageBackend::None,
+        ProtoFlagStorageBackend::ACONFIGD => FlagStorageBackend::Aconfigd,
+        ProtoFlagStorageBackend::DEVICE_CONFIG => FlagStorageBackend::DeviceConfig,
+        ProtoFlagStorageBackend::UNSPECIFIED => FlagStorageBackend::Unspecified,
+    };
+
     Flag {
         namespace,
         package,
@@ -43,6 +51,7 @@ fn convert_parsed_flag(path: &Path, flag: &ProtoParsedFlag) -> Flag {
         staged_value: None,
         permission,
         value_picked_from: ValuePickedFrom::Default,
+        storage_backend,
     }
 }
 
