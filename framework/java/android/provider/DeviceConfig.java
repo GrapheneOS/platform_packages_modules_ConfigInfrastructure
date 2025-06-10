@@ -83,7 +83,7 @@ import java.util.concurrent.Executor;
  */
 @SystemApi
 @RavenwoodKeepWholeClass
-@RavenwoodRedirectionClass("DeviceConfig_host")
+@RavenwoodRedirectionClass("DeviceConfig_ravenwood")
 public final class DeviceConfig {
 
     /**
