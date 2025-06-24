@@ -463,6 +463,32 @@ impl StorageFiles {
         })?)
     }
 
+    /// Get boot flag attribute bitfield
+    pub(crate) fn get_boot_flag_attribute(
+        &mut self,
+        context: &PackageFlagContext,
+    ) -> Result<u8, AconfigdError> {
+        if !context.flag_exists {
+            return Err(AconfigdError::FlagDoesNotExist {
+                flag: context.package.to_string() + "." + &context.flag,
+            });
+        }
+
+        // SAFETY: This read is inherently safe from race conditions because it runs inside
+        // aconfigd. The process is single-threaded and is the only one having write access to
+        // these boot files.
+        let flag_info_file = unsafe { self.get_boot_flag_info()? };
+        Ok(aconfig_storage_read_api::get_flag_attribute(
+            flag_info_file,
+            context.value_type,
+            context.flag_index,
+        )
+        .map_err(|errmsg| AconfigdError::FailToGetFlagAttribute {
+            flag: context.package.to_string() + "." + &context.flag,
+            errmsg,
+        })?)
+    }
+
     /// Get flag value from a mapped file
     fn get_flag_value_from_file(
         file: &[u8],
@@ -829,7 +855,10 @@ impl StorageFiles {
             context.package.to_string() + "." + &context.flag
         );
         let attribute = self.get_flag_attribute(context)?;
-        if (attribute & FlagInfoBit::HasLocalOverride as u8) == 0 {
+        let boot_attribute = self.get_boot_flag_attribute(context)?;
+        if (attribute & FlagInfoBit::HasLocalOverride as u8) == 0
+            && (boot_attribute & FlagInfoBit::HasLocalOverride as u8) == 0
+        {
             return Err(AconfigdError::FlagHasNoLocalOverride {
                 flag: context.package.to_string() + "." + &context.flag,
             });
@@ -847,7 +876,7 @@ impl StorageFiles {
         let flag_info_file = self.get_persist_flag_info()?;
         Self::set_flag_has_local_override_to_file(flag_info_file, context, false)?;
 
-        if configinfra_framework_flags_rust::enable_immediate_clear_override_bugfix() && immediate {
+        if immediate {
             let value = if (attribute & FlagInfoBit::HasServerOverride as u8) == 1 {
                 self.get_server_flag_value(&context)?
             } else {
@@ -1363,6 +1392,25 @@ mod tests {
     }
 
     #[test]
+    fn test_get_boot_flag_attribute() {
+        let container = ContainerMock::new();
+        let root_dir = StorageRootDirMock::new();
+        let mut storage_files = create_mock_storage_files(&container, &root_dir);
+        let mut context = storage_files
+            .get_package_flag_context("com.android.aconfig.storage.test_1", "not_exist")
+            .unwrap();
+        assert!(storage_files.get_flag_attribute(&context).is_err());
+
+        context = storage_files
+            .get_package_flag_context("com.android.aconfig.storage.test_1", "enabled_rw")
+            .unwrap();
+        let attribute = storage_files.get_boot_flag_attribute(&context).unwrap();
+        assert!(attribute & (FlagInfoBit::IsReadWrite as u8) != 0);
+        assert!(attribute & (FlagInfoBit::HasServerOverride as u8) == 0);
+        assert!(attribute & (FlagInfoBit::HasLocalOverride as u8) == 0);
+    }
+
+    #[test]
     fn test_get_server_flag_value() {
         let container = ContainerMock::new();
         let root_dir = StorageRootDirMock::new();
@@ -1633,11 +1681,22 @@ mod tests {
             .get_package_flag_context("com.android.aconfig.storage.test_1", "enabled_rw")
             .unwrap();
 
+        // test remove local override without immediate effect on boot
         assert!(storage_files.remove_local_override(&context, false).is_err());
         storage_files.stage_local_override(&context, "false").unwrap();
         storage_files.remove_local_override(&context, false).unwrap();
         assert_eq!(&storage_files.get_local_flag_value(&context).unwrap(), "");
         let attribute = storage_files.get_flag_attribute(&context).unwrap();
+        assert!(attribute & (FlagInfoBit::HasLocalOverride as u8) == 0);
+
+        // test remove local override with immediate effect on boot
+        storage_files.stage_and_apply_local_override(&context, "false").unwrap();
+        storage_files.remove_local_override(&context, true).unwrap();
+        assert_eq!(&storage_files.get_local_flag_value(&context).unwrap(), "");
+        let attribute = storage_files.get_flag_attribute(&context).unwrap();
+        assert!(attribute & (FlagInfoBit::HasLocalOverride as u8) == 0);
+        assert_eq!(&storage_files.get_boot_flag_value(&context).unwrap(), "true");
+        let attribute = storage_files.get_boot_flag_attribute(&context).unwrap();
         assert!(attribute & (FlagInfoBit::HasLocalOverride as u8) == 0);
     }
 
