@@ -81,6 +81,8 @@ public class AconfigPackageTests {
                 reader = AconfigPackage.load(packageName);
                 readerMap.put(packageName, reader);
             }
+            // TODO: b/377311211 - Update to reflect redacted values once
+            // implemented.
             boolean jVal = reader.getBooleanFlagValue(flagName, false);
 
             assertEquals(rVal, jVal);
