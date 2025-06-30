@@ -20,18 +20,27 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertThrows;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
-import org.junit.Rule;
-
+import android.aconfig.DeviceProtosTestUtil;
+import android.aconfig.nano.Aconfig;
+import android.aconfig.nano.Aconfig.parsed_flag;
+import android.aconfig.storage.FlagTable;
+import android.aconfig.storage.FlagValueList;
+import android.aconfig.storage.PackageTable;
+import android.aconfig.storage.StorageFileProvider;
+import android.os.flagging.AconfigPackage;
 import android.os.flagging.AconfigStorageWriteException;
 import android.os.flagging.FlagManager;
 import android.platform.test.annotations.RequiresFlagsEnabled;
 import android.platform.test.flag.junit.CheckFlagsRule;
 import android.platform.test.flag.junit.DeviceFlagsValueProvider;
 import android.provider.flags.Flags;
+
 import androidx.test.InstrumentationRegistry;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -42,8 +51,7 @@ import java.util.Map;
 @RunWith(JUnit4.class)
 public class AconfigPublicApiCtsTests {
     @Rule
-    public final CheckFlagsRule mCheckFlagsRule =
-            DeviceFlagsValueProvider.createCheckFlagsRule();
+    public final CheckFlagsRule mCheckFlagsRule = DeviceFlagsValueProvider.createCheckFlagsRule();
 
     @Test
     @android.platform.test.annotations.DisabledOnRavenwood(blockedBy = FlagManager.class)
@@ -84,15 +92,47 @@ public class AconfigPublicApiCtsTests {
 
     @Test
     @RequiresFlagsEnabled(Flags.FLAG_NEW_STORAGE_PUBLIC_API)
-    public void testAconfigStorageWriteException(){
+    public void testAconfigStorageWriteException() {
         // create new instance of AconfigStorageWriteException
-        AconfigStorageWriteException exception =
-            new AconfigStorageWriteException("test message");
+        AconfigStorageWriteException exception = new AconfigStorageWriteException("test message");
         assertEquals(exception.getMessage(), "test message");
 
         Exception cause = new Exception("test cause");
         exception = new AconfigStorageWriteException("test message", cause);
         assertEquals(exception.getMessage(), "test message");
         assertEquals(exception.getCause(), cause);
+    }
+
+    @Test
+    @RequiresFlagsEnabled(Flags.FLAG_PUBLIC_INTERNAL_READ_API)
+    public void testAconfigPackageInstanceInternalRead() throws IOException {
+        List<parsed_flag> flags = DeviceProtosTestUtil.loadAndParseFlagProtos();
+        Map<String, AconfigPackage> readerMap = new HashMap<>();
+        StorageFileProvider fp = StorageFileProvider.getDefaultProvider();
+
+        for (parsed_flag flag : flags) {
+            if (flag.permission == Aconfig.READ_ONLY && flag.state == Aconfig.DISABLED) {
+                continue;
+            }
+            String container = flag.container;
+            String packageName = flag.package_;
+            String flagName = flag.name;
+
+            PackageTable pTable = fp.getPackageTable(container);
+            PackageTable.Node pNode = pTable.get(packageName);
+            FlagTable fTable = fp.getFlagTable(container);
+            FlagTable.Node fNode = fTable.get(pNode.getPackageId(), flagName);
+            FlagValueList fList = fp.getFlagValueList(container);
+            boolean rVal = fList.getBoolean(pNode.getBooleanStartIndex() + fNode.getFlagIndex());
+
+            AconfigPackage reader = readerMap.get(packageName);
+            if (reader == null) {
+                reader = AconfigPackage.load(packageName);
+                readerMap.put(packageName, reader);
+            }
+            boolean jVal = reader.getBooleanFlagValueInternal(flagName, false);
+
+            assertEquals(rVal, jVal);
+        }
     }
 }

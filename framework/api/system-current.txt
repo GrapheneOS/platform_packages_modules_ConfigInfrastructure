@@ -1,6 +1,10 @@
 // Signature format: 2.0
 package android.os.flagging {
 
+  public class AconfigPackage {
+    method @FlaggedApi("android.provider.flags.public_internal_read_api") public boolean getBooleanFlagValueInternal(@NonNull String, boolean);
+  }
+
   @FlaggedApi("android.provider.flags.new_storage_public_api") public class AconfigStorageWriteException extends android.util.AndroidRuntimeException {
     ctor @FlaggedApi("android.provider.flags.new_storage_public_api") public AconfigStorageWriteException(@NonNull String);
     ctor @FlaggedApi("android.provider.flags.new_storage_public_api") public AconfigStorageWriteException(@NonNull String, @NonNull Throwable);

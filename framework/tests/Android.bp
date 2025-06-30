@@ -73,11 +73,12 @@ java_defaults {
         "junit",
         "flag-junit",
         "ravenwood-junit",
+        "aconfig_device_paths_java_util",
     ],
     libs: [
         "framework-configinfrastructure.impl",
     ],
-    sdk_version: "module_current",
+    // See below comment regarding sdk_version.
     jarjar_rules: ":framework-configinfrastructure-jarjar",
     team: "trendy_team_android_core_experiments",
 }
@@ -90,6 +91,7 @@ android_test {
         "cts",
     ],
     test_config: "AndroidCtsTest.xml",
+    sdk_version: "module_current",
 }
 
 android_ravenwood_test {

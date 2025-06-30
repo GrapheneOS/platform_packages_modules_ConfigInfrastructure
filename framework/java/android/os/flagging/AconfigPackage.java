@@ -18,6 +18,7 @@ package android.os.flagging;
 
 import static android.aconfig.storage.TableUtils.StorageFilesBundle;
 import static android.provider.flags.Flags.FLAG_NEW_STORAGE_PUBLIC_API;
+import static android.provider.flags.Flags.FLAG_PUBLIC_INTERNAL_READ_API;
 import static android.provider.flags.Flags.readPlatformFromPlatformApi;
 
 import android.aconfig.storage.AconfigStorageException;
@@ -26,6 +27,7 @@ import android.aconfig.storage.FlagValueList;
 import android.aconfig.storage.PackageTable;
 import android.annotation.FlaggedApi;
 import android.annotation.NonNull;
+import android.annotation.SystemApi;
 import android.os.Build;
 import android.util.Log;
 
@@ -50,13 +52,12 @@ import java.util.Map;
  * cache information related to one package. To read flags from a different package, a new instance
  * of this class should be {@link #load loaded}.
  */
-@FlaggedApi(FLAG_NEW_STORAGE_PUBLIC_API)
 @android.ravenwood.annotation.RavenwoodKeepWholeClass
 public class AconfigPackage {
     private static final String TAG = "AconfigPackage";
 
     private static final String MAP_PATH = getStorageRootPath() + "/metadata/aconfig/maps/";
-    private static final String BOOT_PATH =  getStorageRootPath() + "/metadata/aconfig/boot/";
+    private static final String BOOT_PATH = getStorageRootPath() + "/metadata/aconfig/boot/";
 
     private static final String PMAP_FILE_EXT = ".package.map";
 
@@ -70,12 +71,11 @@ public class AconfigPackage {
         return RavenwoodHelper.getRavenwoodAconfigStoragePath();
     }
 
-    private static final boolean READ_PLATFORM_FROM_PLATFORM_API =
-            getReadPlatformFromPlatformApi();
+    private static final boolean READ_PLATFORM_FROM_PLATFORM_API = getReadPlatformFromPlatformApi();
 
     /**
-     * On ravenwood, we don't use {@link PlatformAconfigPackage} and read all the storage files
-     * in the storage directory directly by this class.
+     * On ravenwood, we don't use {@link PlatformAconfigPackage} and read all the storage files in
+     * the storage directory directly by this class.
      */
     @android.ravenwood.annotation.RavenwoodReplace
     private static boolean getReadPlatformFromPlatformApi() {
@@ -192,6 +192,34 @@ public class AconfigPackage {
      */
     @FlaggedApi(FLAG_NEW_STORAGE_PUBLIC_API)
     public boolean getBooleanFlagValue(@NonNull String flagName, boolean defaultValue) {
+        if (READ_PLATFORM_FROM_PLATFORM_API && mPlatformAconfigPackage != null) {
+            return mPlatformAconfigPackage.getBooleanFlagValue(flagName, defaultValue);
+        }
+
+        // TODO: b/377311211 - If the package has redaction enabled, return false.
+
+        FlagTable.Node fNode = mFlagTable.get(mPackageId, flagName);
+        if (fNode == null) {
+            return defaultValue;
+        }
+        return mFlagValueList.getBoolean(fNode.getFlagIndex() + mPackageBooleanStartOffset);
+    }
+
+    /**
+     * Retrieves the value of a boolean flag.
+     *
+     * <p>This method is intended for internal (calling flags within your own container) use only.
+     * For public reads, use #getBooleanFlagValue, which has safety checks for cross-container
+     * access.
+     *
+     * @param flagName The name of the flag (excluding any package name prefix).
+     * @param defaultValue The value to return if the flag is not found.
+     * @return The boolean value of the flag, or `defaultValue` if the flag is not found.
+     * @hide
+     */
+    @FlaggedApi(FLAG_PUBLIC_INTERNAL_READ_API)
+    @SystemApi
+    public boolean getBooleanFlagValueInternal(@NonNull String flagName, boolean defaultValue) {
         if (READ_PLATFORM_FROM_PLATFORM_API && mPlatformAconfigPackage != null) {
             return mPlatformAconfigPackage.getBooleanFlagValue(flagName, defaultValue);
         }

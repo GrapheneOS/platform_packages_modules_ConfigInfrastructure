@@ -1,7 +1,7 @@
 // Signature format: 2.0
 package android.os.flagging {
 
-  @FlaggedApi("android.provider.flags.new_storage_public_api") public class AconfigPackage {
+  public class AconfigPackage {
     method @FlaggedApi("android.provider.flags.new_storage_public_api") public boolean getBooleanFlagValue(@NonNull String, boolean);
     method @FlaggedApi("android.provider.flags.new_storage_public_api") @NonNull public static android.os.flagging.AconfigPackage load(@NonNull String);
   }
