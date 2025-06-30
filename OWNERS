@@ -3,3 +3,6 @@ dzshen@google.com
 marybethfair@google.com
 opg@google.com
 zhidou@google.com
+
+per-file *ravenwood* = file:platform/frameworks/base:/ravenwood/OWNERS
+per-file *Ravenwood* = file:platform/frameworks/base:/ravenwood/OWNERS
