@@ -91,7 +91,7 @@ flag {
   name: "public_internal_read_api"
   namespace: "core_experiments_team_internal"
   description: "API flag for internal read public API"
-  bug: ""
+  bug: "417540341"
   is_fixed_read_only: true
   is_exported: true
 }

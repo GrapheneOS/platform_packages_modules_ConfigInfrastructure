@@ -208,9 +208,10 @@ public class AconfigPackage {
     /**
      * Retrieves the value of a boolean flag.
      *
-     * <p>This method is intended for internal (calling flags within your own container) use only.
-     * For public reads, use #getBooleanFlagValue, which has safety checks for cross-container
-     * access.
+     * <p>This method is intended for internal use only, meaning that the container calling this
+     * method should be the same container where the flag is declared. For exported reads (to get
+     * the value of a flag declared in another container), use #getBooleanFlagValue, which has
+     * safety checks for cross-container access.
      *
      * @param flagName The name of the flag (excluding any package name prefix).
      * @param defaultValue The value to return if the flag is not found.

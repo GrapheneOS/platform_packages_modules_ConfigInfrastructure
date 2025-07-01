@@ -16,12 +16,21 @@ package {
     default_applicable_licenses: ["Android-Apache-2.0"],
 }
 
-java_sdk_library {
-    name: "framework-configinfrastructure",
+filegroup {
+    name: "framework-configinfrastructure-sources",
     srcs: [
         "java/**/*.java",
         "java/**/*.aidl",
     ],
+    exclude_srcs: [
+        ":framework-configinfrastructure-ravenwood-sources",
+    ],
+    visibility: ["//visibility:private"],
+}
+
+java_sdk_library {
+    name: "framework-configinfrastructure",
+    srcs: [":framework-configinfrastructure-sources"],
     defaults: ["framework-module-defaults"],
     permitted_packages: [
         "android.internal.configinfra",
@@ -65,6 +74,15 @@ filegroup {
     name: "framework-configinfrastructure-ravenwood-policies",
     srcs: [
         "framework-configinfrastructure-ravenwood-policies.txt",
+    ],
+    visibility: ["//frameworks/base/ravenwood"],
+}
+
+filegroup {
+    name: "framework-configinfrastructure-ravenwood-sources",
+    srcs: [
+        "java/**/*_ravenwood.java",
+        "java/**/RavenwoodConfigDataStore.java",
     ],
     visibility: ["//frameworks/base/ravenwood"],
 }
