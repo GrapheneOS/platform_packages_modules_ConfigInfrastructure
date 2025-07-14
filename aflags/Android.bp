@@ -27,6 +27,7 @@ rust_binary {
     name: "aflags_updatable",
     host_supported: true,
     defaults: ["aflags.defaults"],
+    prefer_rlib: true,
     apex_available: [
         "com.android.configinfrastructure",
     ],
