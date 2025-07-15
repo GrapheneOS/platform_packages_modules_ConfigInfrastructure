@@ -443,6 +443,7 @@ final class WritableFlags {
                 "permissions/one_time_permissions_timeout_millis",
                 "permissions/permission_changes_store_exact_time",
                 "pmw/vendor.google.aam.flags.enable_aam",
+                "preload_safety/android.security.aapm_feature_usb_data_protection",
                 "privacy/bg_location_check_is_enabled",
                 "privacy/camera_toggle_enabled",
                 "privacy/data_sharing_update_period_millis",
