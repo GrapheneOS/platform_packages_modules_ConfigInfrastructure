@@ -49,6 +49,7 @@ rust_library {
 rust_binary {
     name: "aconfigd-mainline",
     defaults: ["aconfigd_rust.defaults"],
+    prefer_rlib: true,
     srcs: ["src/main.rs"],
     rustlibs: [
         "libaconfigd_rust",
