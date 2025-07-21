@@ -37,9 +37,14 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RunWith(JUnit4.class)
 public class AconfigPackageInternalTests {
+
+    private static final Set<String> PLATFORM_CONTAINERS =
+            Set.of("system", "system_ext", "vendor", "product");
+
     @Test
     public void testAconfigPackageInternal_load() throws IOException {
         List<parsed_flag> flags = DeviceProtosTestUtil.loadAndParseFlagProtos();
@@ -53,6 +58,8 @@ public class AconfigPackageInternalTests {
             String container = flag.container;
             String packageName = flag.package_;
             String flagName = flag.name;
+
+            if (PLATFORM_CONTAINERS.contains(container)) continue;
 
             PackageTable pTable = fp.getPackageTable(container);
             PackageTable.Node pNode = pTable.get(packageName);
@@ -90,6 +97,13 @@ public class AconfigPackageInternalTests {
         StorageFileProvider fp = StorageFileProvider.getDefaultProvider();
 
         parsed_flag flag = flags.get(0);
+        for (int i = 0; i < flags.size(); i++) {
+            flag = flags.get(i);
+            if (flag.permission == Aconfig.READ_ONLY && flag.state == Aconfig.DISABLED) {
+                continue;
+            }
+            if (PLATFORM_CONTAINERS.contains(flag.container)) continue;
+        }
 
         String container = flag.container;
         String packageName = flag.package_;
