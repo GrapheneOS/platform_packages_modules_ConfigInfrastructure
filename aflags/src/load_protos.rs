@@ -61,7 +61,7 @@ pub(crate) fn load() -> Result<Vec<Flag>> {
     let paths = aconfig_device_paths::parsed_flags_proto_paths()?;
     for path in paths {
         let Ok(bytes) = fs::read(&path) else {
-            eprintln!("warning: failed to read {:?}", path);
+            eprintln!("warning: failed to read {path:?}");
             continue;
         };
         let parsed_flags: ProtoParsedFlags = protobuf::Message::parse_from_bytes(&bytes)?;
