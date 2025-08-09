@@ -127,7 +127,7 @@ impl Flag {
         match (&self.permission, self.staged_value) {
             (FlagPermission::ReadOnly, _) => "-".to_string(),
             (FlagPermission::ReadWrite, None) => "-".to_string(),
-            (FlagPermission::ReadWrite, Some(v)) => format!("(->{})", v),
+            (FlagPermission::ReadWrite, Some(v)) => format!("(->{v})"),
         }
     }
 }

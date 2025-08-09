@@ -122,7 +122,7 @@ android.flag_two=nonsense
 
         let result = execute_device_config_command(&["list", "device_config_overrides"]).unwrap();
         let flags = parse_device_config_output(&result).unwrap();
-        println!("{:?}", flags);
+        println!("{flags:?}");
         let flag_value =
             flags.get(&format!("{namespace}:aflags_test_package.aflags_test_flag")).unwrap();
         assert_eq!(*flag_value, FlagValue::Disabled);
