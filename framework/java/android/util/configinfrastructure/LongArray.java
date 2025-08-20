@@ -16,21 +16,16 @@
 
 package android.util.configinfrastructure;
 
-import android.annotation.Nullable;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.os.Build;
 
 import com.android.internal.util.configinfrastructure.ArrayUtils;
-import com.android.internal.util.Preconditions;
-
-import java.util.Arrays;
 
 /**
  * Implements a growing array of long primitives.
  *
- * This is copied from frameworks/base/core/java/android/util/LongArray.java
- * so ConfigInfra can use ProtoInputStream. Any major bugfixes in the original
- * LongArray should be copied here.
+ * <p>This is copied from frameworks/base/core/java/android/util/LongArray.java so ConfigInfra can
+ * use ProtoInputStream. Any major bugfixes in the original LongArray should be copied here.
  *
  * @hide
  */
@@ -41,22 +36,13 @@ public class LongArray implements Cloneable {
     private long[] mValues;
     private int mSize;
 
-    private  LongArray(long[] array, int size) {
-        mValues = array;
-        mSize = Preconditions.checkArgumentInRange(size, 0, array.length, "size");
-    }
-
-    /**
-     * Creates an empty LongArray with the default initial capacity.
-     */
+    /** Creates an empty LongArray with the default initial capacity. */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public LongArray() {
         this(0);
     }
 
-    /**
-     * Creates an empty LongArray with the specified initial capacity.
-     */
+    /** Creates an empty LongArray with the specified initial capacity. */
     public LongArray(int initialCapacity) {
         if (initialCapacity == 0) {
             mValues = EmptyArray.LONG;
@@ -66,38 +52,7 @@ public class LongArray implements Cloneable {
         mSize = 0;
     }
 
-    /**
-     * Creates an LongArray wrapping the given primitive long array.
-     */
-    public static LongArray wrap(long[] array) {
-        return new LongArray(array, array.length);
-    }
-
-    /**
-     * Creates an LongArray from the given primitive long array, copying it.
-     */
-    public static LongArray fromArray(long[] array, int size) {
-        return wrap(Arrays.copyOf(array, size));
-    }
-
-    /**
-     * Changes the size of this LongArray. If this LongArray is shrinked, the backing array capacity
-     * is unchanged. If the new size is larger than backing array capacity, a new backing array is
-     * created from the current content of this LongArray padded with 0s.
-     */
-    public void resize(int newSize) {
-        Preconditions.checkArgumentNonnegative(newSize);
-        if (newSize <= mValues.length) {
-            Arrays.fill(mValues, newSize, mValues.length, 0);
-        } else {
-            ensureCapacity(newSize - mSize);
-        }
-        mSize = newSize;
-    }
-
-    /**
-     * Appends the specified value to the end of this array.
-     */
+    /** Appends the specified value to the end of this array. */
     public void add(long value) {
         add(mSize, value);
     }
@@ -123,26 +78,16 @@ public class LongArray implements Cloneable {
         mValues[index] = value;
     }
 
-    /**
-     * Adds the values in the specified array to this array.
-     */
-    public void addAll(LongArray values) {
-        final int count = values.mSize;
-        ensureCapacity(count);
-
-        System.arraycopy(values.mValues, 0, mValues, mSize, count);
-        mSize += count;
-    }
-
-    /**
-     * Ensures capacity to append at least <code>count</code> values.
-     */
+    /** Ensures capacity to append at least <code>count</code> values. */
     private void ensureCapacity(int count) {
         final int currentSize = mSize;
         final int minCapacity = currentSize + count;
         if (minCapacity >= mValues.length) {
-            final int targetCap = currentSize + (currentSize < (MIN_CAPACITY_INCREMENT / 2) ?
-                    MIN_CAPACITY_INCREMENT : currentSize >> 1);
+            final int targetCap =
+                    currentSize
+                            + (currentSize < (MIN_CAPACITY_INCREMENT / 2)
+                                    ? MIN_CAPACITY_INCREMENT
+                                    : currentSize >> 1);
             final int newCapacity = targetCap > minCapacity ? targetCap : minCapacity;
             final long[] newValues = ArrayUtils.newUnpaddedLongArray(newCapacity);
             System.arraycopy(mValues, 0, newValues, 0, currentSize);
@@ -150,9 +95,7 @@ public class LongArray implements Cloneable {
         }
     }
 
-    /**
-     * Removes all values from this array.
-     */
+    /** Removes all values from this array. */
     public void clear() {
         mSize = 0;
     }
@@ -169,72 +112,22 @@ public class LongArray implements Cloneable {
         return clone;
     }
 
-    /**
-     * Returns the value at the specified position in this array.
-     */
+    /** Returns the value at the specified position in this array. */
     @UnsupportedAppUsage
     public long get(int index) {
         ArrayUtils.checkBounds(mSize, index);
         return mValues[index];
     }
 
-    /**
-     * Sets the value at the specified position in this array.
-     */
+    /** Sets the value at the specified position in this array. */
     public void set(int index, long value) {
         ArrayUtils.checkBounds(mSize, index);
         mValues[index] = value;
     }
 
-    /**
-     * Returns the index of the first occurrence of the specified value in this
-     * array, or -1 if this array does not contain the value.
-     */
-    public int indexOf(long value) {
-        final int n = mSize;
-        for (int i = 0; i < n; i++) {
-            if (mValues[i] == value) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    /**
-     * Removes the value at the specified index from this array.
-     */
-    public void remove(int index) {
-        ArrayUtils.checkBounds(mSize, index);
-        System.arraycopy(mValues, index + 1, mValues, index, mSize - index - 1);
-        mSize--;
-    }
-
-    /**
-     * Returns the number of values in this array.
-     */
+    /** Returns the number of values in this array. */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public int size() {
         return mSize;
-    }
-
-    /**
-     * Returns a new array with the contents of this LongArray.
-     */
-    public long[] toArray() {
-        return Arrays.copyOf(mValues, mSize);
-    }
-
-    /**
-     * Test if each element of {@code a} equals corresponding element from {@code b}
-     */
-    public static boolean elementsEqual(@Nullable LongArray a, @Nullable LongArray b) {
-        if (a == null || b == null) return a == b;
-        if (a.mSize != b.mSize) return false;
-        for (int i = 0; i < a.mSize; i++) {
-            if (a.get(i) != b.get(i)) {
-                return false;
-            }
-        }
-        return true;
     }
 }

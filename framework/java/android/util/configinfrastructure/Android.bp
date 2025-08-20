@@ -26,7 +26,6 @@ java_library {
         "error_prone_annotations",
     ],
     static_libs: [
-        "modules-utils-preconditions",
         "modules-utils-arrayutils",
     ],
     min_sdk_version: "34",
