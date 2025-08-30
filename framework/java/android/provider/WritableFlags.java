@@ -375,6 +375,7 @@ final class WritableFlags {
                 "lmkd_native/thrashing_limit_critical",
                 "low_power_standby/enable_policy",
                 "low_power_standby/enable_standby_ports",
+                "machine_learning/allowlisted_app_functions_agents",
                 "media_better_together/scanning_package_minimum_importance",
                 "media_tv/android.media.tv.flags.enable_ad_service_fw",
                 "media_tv/android.media.tv.flags.tiaf_v_apis",
