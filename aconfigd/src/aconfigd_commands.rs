@@ -17,6 +17,7 @@
 use aconfigd_rust::aconfigd::Aconfigd;
 use anyhow::{bail, Result};
 use log::{debug, error};
+use rustutils::android::sockets;
 use std::os::fd::AsRawFd;
 use std::os::unix::net::UnixListener;
 use std::path::Path;
@@ -28,7 +29,7 @@ const ACONFIGD_SOCKET_BACKLOG: i32 = 8;
 
 /// start aconfigd socket service
 pub fn start_socket() -> Result<()> {
-    let fd = rustutils::sockets::android_get_control_socket(ACONFIGD_SOCKET)?;
+    let fd = sockets::android_get_control_socket(ACONFIGD_SOCKET)?;
 
     // SAFETY: Safe because this doesn't modify any memory and we check the return value.
     let ret = unsafe { libc::listen(fd.as_raw_fd(), ACONFIGD_SOCKET_BACKLOG) };
