@@ -365,6 +365,15 @@ public final class DeviceConfig {
     public static final String NAMESPACE_GAME_DRIVER = "game_driver";
 
     /**
+     * Namespace for all GPU related features.
+     *
+     * @hide
+     */
+    @SystemApi
+    @FlaggedApi(Flags.FLAG_ANGLE_DYNAMIC_DENYLIST)
+    public static final String NAMESPACE_GPU = "gpu";
+
+    /**
      * Namespace for all HDMI Control features.
      *
      * @hide

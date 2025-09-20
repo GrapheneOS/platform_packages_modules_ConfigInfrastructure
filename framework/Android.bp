@@ -126,6 +126,7 @@ java_aconfig_library {
         "//visibility:public",
     ],
     aconfig_declarations: "configinfra_framework_flags",
+    host_supported: true,
     sdk_version: "core_platform",
     libs: [
         "fake_device_config",

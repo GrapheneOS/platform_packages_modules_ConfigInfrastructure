@@ -82,6 +82,7 @@ package android.provider {
     field public static final String NAMESPACE_DISPLAY_MANAGER = "display_manager";
     field public static final String NAMESPACE_EDGETPU_NATIVE = "edgetpu_native";
     field public static final String NAMESPACE_GAME_DRIVER = "game_driver";
+    field @FlaggedApi("android.provider.flags.angle_dynamic_denylist") public static final String NAMESPACE_GPU = "gpu";
     field public static final String NAMESPACE_HDMI_CONTROL = "hdmi_control";
     field public static final String NAMESPACE_HEALTH_FITNESS = "health_fitness";
     field public static final String NAMESPACE_INPUT_METHOD_MANAGER = "input_method_manager";
