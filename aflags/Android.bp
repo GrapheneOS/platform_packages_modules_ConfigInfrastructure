@@ -17,6 +17,7 @@ rust_defaults {
         "libaconfig_storage_file",
         "libanyhow",
         "libclap",
+        "libmainline_beta_namespace_config",
         "libnix",
         "libprotobuf",
         "libregex",
