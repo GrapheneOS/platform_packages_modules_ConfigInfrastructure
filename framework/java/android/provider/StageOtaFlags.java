@@ -35,10 +35,16 @@ import java.util.Map;
 public final class StageOtaFlags {
     private static String LOG_TAG = "StageOtaFlags";
 
-    /** Aconfig storage is disabled and unavailable for writes. @hide */
+    /**
+     * Aconfig storage is disabled and unavailable for writes.
+     * @hide
+     */
     @SystemApi public static final int STATUS_STORAGE_NOT_ENABLED = -1;
 
-    /** Stage request was successful. @hide */
+    /**
+     * Stage request was successful.
+     * @hide
+     */
     @SystemApi public static final int STATUS_STAGE_SUCCESS = 0;
 
     /** @hide */
