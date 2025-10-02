@@ -23,12 +23,12 @@ use aconfig_storage_file::{
     list_flags, list_flags_with_info, FlagInfoBit, FlagValueSummary, FlagValueType,
 };
 use aconfig_storage_read_api::{
-    get_boolean_flag_value, get_flag_read_context, get_package_read_context,
+    get_boolean_flag_value, get_flag_read_context, get_int64_flag_value, get_package_read_context,
     get_storage_file_version, map_file,
 };
 use aconfig_storage_write_api::{
     map_mutable_storage_file, set_boolean_flag_value, set_flag_has_local_override,
-    set_flag_has_server_override,
+    set_flag_has_server_override, set_int64_flag_value,
 };
 use aconfigd_protos::{ProtoFlagOverride, ProtoLocalFlagOverrides, ProtoPersistStorageRecord};
 use anyhow::anyhow;
@@ -514,6 +514,15 @@ impl StorageFiles {
                     Ok(String::from("false"))
                 }
             }
+            FlagValueType::Int64 => {
+                let value = get_int64_flag_value(file, context.flag_index).map_err(|errmsg| {
+                    AconfigdError::FailToGetFlagValue {
+                        flag: context.package.to_string() + "." + &context.flag,
+                        errmsg,
+                    }
+                })?;
+                Ok(value.to_string())
+            }
         }
     }
 
@@ -596,6 +605,20 @@ impl StorageFiles {
                     },
                 )?;
             }
+            FlagValueType::Int64 => match value.parse::<i64>() {
+                Ok(num) => set_int64_flag_value(file, context.flag_index, num).map_err(|errmsg| {
+                    AconfigdError::FailToSetFlagValue {
+                        flag: context.package.to_string() + "." + &context.flag,
+                        errmsg,
+                    }
+                }),
+                Err(_) => {
+                    return Err(AconfigdError::InvalidFlagValue {
+                        flag: context.package.to_string() + "." + &context.flag,
+                        value: value.to_string(),
+                    });
+                }
+            }?,
         }
 
         Ok(())
