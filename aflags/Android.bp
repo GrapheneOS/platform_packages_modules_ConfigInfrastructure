@@ -1,5 +1,6 @@
 package {
     default_applicable_licenses: ["Android-Apache-2.0"],
+    default_team: "trendy_team_android_core_experiments",
 }
 
 rust_defaults {
@@ -40,5 +41,5 @@ rust_test {
     defaults: ["aflags_updatable.defaults"],
     rustlibs: ["librand"],
     test_suites: ["general-tests"],
-    require_root: true
+    require_root: true,
 }

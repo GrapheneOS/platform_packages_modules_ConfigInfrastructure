@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+package {
+    default_team: "trendy_team_android_core_experiments",
+}
+
 rust_defaults {
     name: "aconfigd_rust.defaults",
     edition: "2021",
@@ -65,7 +69,6 @@ rust_binary {
 
 rust_test {
     name: "libaconfigd_rust.test",
-    team: "trendy_team_android_core_experiments",
     test_suites: [
         "general-tests",
         "mts-configinfrastructure",
@@ -85,7 +88,7 @@ rust_test {
         "./tests/data/container_with_more_flags.flag.val",
         "./tests/data/container_with_more_flags.flag.info",
     ],
-    require_root: true
+    require_root: true,
 }
 
 rust_aconfig_library {
