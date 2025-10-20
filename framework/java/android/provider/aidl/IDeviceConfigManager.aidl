@@ -1,7 +1,7 @@
 package android.provider.aidl;
 
 /**
- * {@hide}
+ * @hide
  */
 interface IDeviceConfigManager {
 // TODO(b/265948914): maybe rename this IDeviceConfigService ? ManagerService?

@@ -2,6 +2,14 @@ package: "android.provider.flags"
 container: "com.android.configinfrastructure"
 
 flag {
+  name: "angle_dynamic_denylist"
+  namespace: "gpu"
+  description: "Support dynamic ANGLE denylist"
+  bug: "424013800"
+  is_exported: true
+}
+
+flag {
   name: "new_storage_writer_system_api"
   namespace: "core_experiments_team_internal"
   description: "API flag for writing new storage"

@@ -153,5 +153,7 @@ pub enum AconfigdError {
     FailToWriteToSocket { errmsg: std::io::Error },
 
     #[error("fail to read device build fingerpirnt: {:?}", .errmsg)]
-    FailToReadBuildFingerPrint { errmsg: rustutils::system_properties::PropertyWatcherError },
+    FailToReadBuildFingerPrint {
+        errmsg: rustutils::android::system_properties::PropertyWatcherError,
+    },
 }

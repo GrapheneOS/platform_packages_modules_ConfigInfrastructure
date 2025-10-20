@@ -302,8 +302,9 @@ impl StorageFilesManager {
 
         let ota_flags_pb = read_pb_from_file::<ProtoOTAFlagStagingMessage>(&ota_pb_file)?;
         if let Some(target_build_id) = ota_flags_pb.build_id {
-            let device_build_id = rustutils::system_properties::read("ro.build.fingerprint")
-                .map_err(|errmsg| AconfigdError::FailToReadBuildFingerPrint { errmsg })?;
+            let device_build_id =
+                rustutils::android::system_properties::read("ro.build.fingerprint")
+                    .map_err(|errmsg| AconfigdError::FailToReadBuildFingerPrint { errmsg })?;
             if device_build_id == Some(target_build_id.clone()) {
                 remove_file(&ota_pb_file)?;
                 Ok(Some(ota_flags_pb.overrides))
@@ -946,7 +947,7 @@ mod tests {
         assert!(root_dir.flags_dir.join("ota.pb").exists());
 
         let device_build_id =
-            rustutils::system_properties::read("ro.build.fingerprint").unwrap().unwrap();
+            rustutils::android::system_properties::read("ro.build.fingerprint").unwrap().unwrap();
         ota_flags.set_build_id(device_build_id);
         let mut flag1 = ProtoFlagOverride::new();
         flag1.set_package_name("com.android.aconfig.storage.test_1".to_string());
@@ -979,7 +980,7 @@ mod tests {
 
         let mut ota_flags = ProtoOTAFlagStagingMessage::new();
         let device_build_id =
-            rustutils::system_properties::read("ro.build.fingerprint").unwrap().unwrap();
+            rustutils::android::system_properties::read("ro.build.fingerprint").unwrap().unwrap();
         ota_flags.set_build_id(device_build_id);
         let mut flag1 = ProtoFlagOverride::new();
         flag1.set_package_name("com.android.aconfig.storage.test_1".to_string());

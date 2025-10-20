@@ -55,3 +55,18 @@ flag {
     purpose: PURPOSE_BUGFIX
   }
 }
+
+flag {
+    name: "read_only_flag_for_test"
+    namespace: "performance"
+    description: "Read-only flag for perf testing."
+    is_fixed_read_only: true
+    bug: "447177427"
+}
+
+flag {
+    name: "read_write_flag_for_test"
+    namespace: "performance"
+    description: "Read/write flag for perf testing."
+    bug: "447177427"
+}
