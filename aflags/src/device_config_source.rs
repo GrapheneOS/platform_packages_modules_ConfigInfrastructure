@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-use crate::{Flag, FlagSource, FlagValue};
+use crate::{Flag, FlagPermission, FlagSource, FlagStorageBackend, FlagValue, ValuePickedFrom};
 
 use anyhow::{anyhow, bail, Result};
 use regex::Regex;
@@ -24,10 +24,9 @@ use std::str;
 
 pub struct DeviceConfigSource {}
 
-#[allow(dead_code)]
 pub(crate) fn parse_device_config_output(raw: &str) -> Result<HashMap<String, FlagValue>> {
     let mut flags = HashMap::new();
-    let regex = Regex::new(r"(?m)^([[[:alnum:]]:_/\.]+)=(true|false)$")?;
+    let regex = Regex::new(r"(?m)^([[[:alnum:]]:_/.*]+)=(true|false)$")?;
     for capture in regex.captures_iter(raw) {
         let key =
             capture.get(1).ok_or(anyhow!("invalid device_config output"))?.as_str().to_string();
@@ -58,9 +57,81 @@ pub(crate) fn execute_device_config_command(command: &[&str]) -> Result<String> 
     Ok(str::from_utf8(&output.stdout)?.to_string())
 }
 
+fn convert_staged_flag_name(staged_name: &str) -> Option<String> {
+    match staged_name.find('*') {
+        Some(star_index) => {
+            let namespace = &staged_name[..star_index];
+            let name = &staged_name[star_index + 1..];
+            Some(format!("{namespace}/{name}"))
+        }
+        _ => None,
+    }
+}
+
+fn extract_staged_flags(flags: HashMap<String, FlagValue>) -> HashMap<String, FlagValue> {
+    let mut staged_flags = HashMap::new();
+
+    for (staged_name, value) in flags {
+        if let Some(name) = convert_staged_flag_name(&staged_name) {
+            staged_flags.insert(name, value);
+        }
+    }
+
+    staged_flags
+}
+
+fn read_device_config_flags() -> Result<HashMap<String, FlagValue>> {
+    let output = execute_device_config_command(&["list"])?;
+    parse_device_config_output(output.as_str())
+}
+
+fn read_staged_device_config_flags() -> Result<HashMap<String, FlagValue>> {
+    let output = execute_device_config_command(&["list", "staged"])?;
+    let staged_flag_map = parse_device_config_output(output.as_str())?;
+    Ok(extract_staged_flags(staged_flag_map))
+}
+
+fn make_device_config_flag(
+    name: &str,
+    value: &FlagValue,
+    staged_value: Option<&FlagValue>,
+) -> Option<Flag> {
+    let slash_index = name.find('/')?;
+    let (namespace, name) = (&name[..slash_index], &name[slash_index + 1..]);
+    let dot_index = name.rfind('.')?;
+    let (package, name) = (&name[..dot_index], &name[dot_index + 1..]);
+
+    Some(Flag {
+        namespace: namespace.to_string(),
+        name: name.to_string(),
+        package: package.to_string(),
+        container: "UNKNOWN_CONTAINER".to_string(), // TODO: Is there something better to put here?
+        value: *value,
+        staged_value: staged_value.cloned(),
+        permission: FlagPermission::ReadWrite, // TODO: Is this correct?
+        value_picked_from: ValuePickedFrom::Default, // TODO: Is this correct?
+        storage_backend: FlagStorageBackend::DeviceConfig,
+    })
+}
+
 impl FlagSource for DeviceConfigSource {
     fn list_flags() -> Result<Vec<Flag>> {
-        Err(anyhow!("new storage should be source of truth"))
+        // Note: Since Mainline Beta flags are *not* listed in aconfig_flags.pb, we are not using
+        // that file as a source of truth for flags. Therefore, these results are only useful for
+        // merging with the flags from AconfigStorageSource, not displaying to the user directly.
+
+        let flag_values = read_device_config_flags()?;
+        let staged_flag_values = read_staged_device_config_flags()?;
+
+        let flags = flag_values
+            .iter()
+            .filter_map(|(namespaced_name, value)| {
+                let staged_value = staged_flag_values.get(namespaced_name);
+                make_device_config_flag(namespaced_name, value, staged_value)
+            })
+            .collect();
+
+        Ok(flags)
     }
 
     fn override_flag(
@@ -100,6 +171,19 @@ android.flag_two=nonsense
         ]);
         let actual = parse_device_config_output(input).unwrap();
         assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_convert_staged_flag_name_valid() {
+        assert_eq!(
+            convert_staged_flag_name("namespace*package.name"),
+            Some("namespace/package.name".to_string())
+        );
+    }
+
+    #[test]
+    fn test_convert_staged_flag_name_no_slash() {
+        assert!(convert_staged_flag_name("namespace.package.name").is_none());
     }
 
     #[test]

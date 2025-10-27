@@ -37,7 +37,7 @@ public final class ConfigInfrastructureFrameworkInitializer {
      * {@link FlagManager} to {@link Context}, so that {@link Context#getSystemService} can return
      * it.
      *
-     * <p>If this is called from other places, it throws a {@link IllegalStateException).
+     * <p>If this is called from other places, it throws a {@link IllegalStateException}.
      *
      */
     @FlaggedApi(Flags.FLAG_NEW_STORAGE_PUBLIC_API)

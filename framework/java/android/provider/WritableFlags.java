@@ -95,6 +95,7 @@ final class WritableFlags {
                 "activity_manager/max_phantom_processes",
                 "activity_manager/max_service_connections_per_process",
                 "activity_manager/media_processing_fgs_timeout_duration",
+                "activity_manager_native_boot/bcast_max_pending_broadcasts_per_sender_uid",
                 "activity_manager_native_boot/freeze_debounce_timeout",
                 "activity_manager_native_boot/freeze_debounce_timeout_ms",
                 "activity_manager_native_boot/freeze_exempt_inst_pkg",
