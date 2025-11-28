@@ -1,6 +1,5 @@
 package com.android.server.deviceconfig;
 
-import static com.android.server.deviceconfig.Flags.enableChargerDependencyForReboot;
 import static com.android.server.deviceconfig.Flags.enableCustomRebootTimeConfigurations;
 import static com.android.server.deviceconfig.Flags.enableSimPinReplay;
 
@@ -389,8 +388,7 @@ final class UnattendedRebootManager {
       scheduleReboot();
     }
 
-    if (enableChargerDependencyForReboot()
-        && mInjector.requiresChargingForReboot(mContext)
+    if (mInjector.requiresChargingForReboot(mContext)
         && !isCharging(mContext)) {
       triggerRebootOnCharging();
       return;

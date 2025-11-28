@@ -1,7 +1,6 @@
 package com.android.server.deviceconfig;
 
 import static androidx.test.platform.app.InstrumentationRegistry.getInstrumentation;
-import static com.android.server.deviceconfig.Flags.FLAG_ENABLE_CHARGER_DEPENDENCY_FOR_REBOOT;
 import static com.android.server.deviceconfig.Flags.FLAG_ENABLE_CUSTOM_REBOOT_TIME_CONFIGURATIONS;
 import static com.android.server.deviceconfig.Flags.FLAG_ENABLE_SIM_PIN_REPLAY;
 
@@ -84,8 +83,7 @@ public class UnattendedRebootManagerTest {
   public void setUp() throws Exception {
     assumeTrue(SdkLevel.isAtLeastV());
 
-    mSetFlagsRule.enableFlags(
-        FLAG_ENABLE_SIM_PIN_REPLAY, FLAG_ENABLE_CHARGER_DEPENDENCY_FOR_REBOOT);
+    mSetFlagsRule.enableFlags(FLAG_ENABLE_SIM_PIN_REPLAY);
 
     mSimPinReplayManager = mock(SimPinReplayManager.class);
     mKeyguardManager = mock(KeyguardManager.class);
@@ -198,7 +196,6 @@ public class UnattendedRebootManagerTest {
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
                 .build());
     when(mSimPinReplayManager.prepareSimPinReplay()).thenReturn(true);
-    mSetFlagsRule.enableFlags(FLAG_ENABLE_CHARGER_DEPENDENCY_FOR_REBOOT);
     mFakeInjector.setRequiresChargingForReboot(true);
     when(mBatterManager.isCharging()).thenReturn(false);
 
@@ -235,7 +232,6 @@ public class UnattendedRebootManagerTest {
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
                 .build());
     when(mSimPinReplayManager.prepareSimPinReplay()).thenReturn(true);
-    mSetFlagsRule.enableFlags(FLAG_ENABLE_CHARGER_DEPENDENCY_FOR_REBOOT);
     mFakeInjector.setRequiresChargingForReboot(false);
     when(mBatterManager.isCharging()).thenReturn(false);
 
@@ -244,33 +240,6 @@ public class UnattendedRebootManagerTest {
 
     // Charging is not required, so reboot should be triggered despite the fact that the device
     // is not charging.
-    assertTrue(mFakeInjector.isRebootAndApplied());
-    assertFalse(mFakeInjector.isRegularRebooted());
-    assertThat(mFakeInjector.getActualRebootTime()).isEqualTo(REBOOT_TIME);
-    assertThat(getRegistrationsForAction(BatteryManager.ACTION_CHARGING)).isEmpty();
-  }
-
-  @Test
-  public void scheduleReboot_requiresCharging_flagNotEnabled() {
-    assumeTrue(SdkLevel.isAtLeastV());
-    Log.i(TAG, "scheduleReboot_requiresCharging_flagNotEnabled");
-    when(mKeyguardManager.isDeviceSecure()).thenReturn(true);
-    when(mConnectivityManager.getNetworkCapabilities(any()))
-        .thenReturn(
-            new NetworkCapabilities.Builder()
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-                .build());
-    when(mSimPinReplayManager.prepareSimPinReplay()).thenReturn(true);
-    mSetFlagsRule.disableFlags(FLAG_ENABLE_CHARGER_DEPENDENCY_FOR_REBOOT);
-    mFakeInjector.setRequiresChargingForReboot(true);
-    when(mBatterManager.isCharging()).thenReturn(false);
-
-    mRebootManager.prepareUnattendedReboot();
-    mRebootManager.scheduleReboot();
-
-    // Charging is required, but the flag that controls the feature to depend on charging is not
-    // enabled, so eboot should be triggered despite the fact that the device is not charging.
     assertTrue(mFakeInjector.isRebootAndApplied());
     assertFalse(mFakeInjector.isRegularRebooted());
     assertThat(mFakeInjector.getActualRebootTime()).isEqualTo(REBOOT_TIME);
