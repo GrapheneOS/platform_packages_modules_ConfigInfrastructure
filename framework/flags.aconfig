@@ -61,31 +61,11 @@ flag {
 }
 
 flag {
-  name: "enable_immediate_clear_override_bugfix"
-  namespace: "core_experiments_team_internal"
-  description: "Bugfix flag to allow clearing a local override immediately"
-  bug: "387316969"
-  metadata {
-    purpose: PURPOSE_BUGFIX
-  }
-}
-
-flag {
   name: "mmd_device_config"
   namespace: "core_experiments_team_internal"
   description: "Enable device config usages for mmd"
   bug: "375431994"
   is_exported: true
-}
-
-flag {
-  name: "use_proto_input_stream"
-  namespace: "core_experiments_team_internal"
-  description: "Use ProtoInputStream to deserialize protos instead of proto lite lib."
-  bug: "390667838"
-  metadata {
-    purpose: PURPOSE_BUGFIX
-  }
 }
 
 flag {
