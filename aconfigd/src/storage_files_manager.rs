@@ -212,11 +212,12 @@ impl StorageFilesManager {
     pub(crate) fn apply_all_staged_overrides(
         &mut self,
         container: &str,
+        fsync_required: bool,
     ) -> Result<(), AconfigdError> {
         let storage_files = self
             .get_storage_files(container)
             .ok_or(AconfigdError::FailToGetStorageFiles { container: container.to_string() })?;
-        storage_files.apply_all_staged_overrides()?;
+        storage_files.apply_all_staged_overrides(fsync_required)?;
         Ok(())
     }
 
@@ -486,10 +487,10 @@ mod tests {
         let persist_flag_map = root_dir.maps_dir.join("mockup.flag.map");
         let persist_flag_val = root_dir.flags_dir.join("mockup.val");
         let persist_flag_info = root_dir.flags_dir.join("mockup.info");
-        copy_file(&container.package_map, &persist_package_map, 0o444).unwrap();
-        copy_file(&container.flag_map, &persist_flag_map, 0o444).unwrap();
-        copy_file(&container.flag_val, &persist_flag_val, 0o644).unwrap();
-        copy_file(&container.flag_info, &persist_flag_info, 0o644).unwrap();
+        copy_file(&container.package_map, &persist_package_map, 0o444, false).unwrap();
+        copy_file(&container.flag_map, &persist_flag_map, 0o444, false).unwrap();
+        copy_file(&container.flag_val, &persist_flag_val, 0o644, false).unwrap();
+        copy_file(&container.flag_info, &persist_flag_info, 0o644, false).unwrap();
 
         let mut pb = ProtoPersistStorageRecord::new();
         pb.set_version(123);
@@ -753,7 +754,7 @@ mod tests {
         let mut manager = StorageFilesManager::new(&root_dir.tmp_dir.path());
         init_storage(&container, &mut manager);
         add_example_overrides(&mut manager);
-        manager.apply_all_staged_overrides("mockup").unwrap();
+        manager.apply_all_staged_overrides("mockup", false).unwrap();
 
         let mut flag =
             manager.get_flag_snapshot("com.android.aconfig.storage.test_1", "enabled_rw").unwrap();
@@ -801,7 +802,7 @@ mod tests {
         let mut manager = StorageFilesManager::new(&root_dir.tmp_dir.path());
         init_storage(&container, &mut manager);
         add_example_overrides(&mut manager);
-        manager.apply_all_staged_overrides("mockup").unwrap();
+        manager.apply_all_staged_overrides("mockup", false).unwrap();
 
         manager.reset_all_storage().unwrap();
         let storage_files = manager.get_storage_files(&container.name).unwrap();
@@ -825,7 +826,7 @@ mod tests {
         let root_dir = StorageRootDirMock::new();
         let mut manager = StorageFilesManager::new(&root_dir.tmp_dir.path());
         init_storage(&container, &mut manager);
-        manager.apply_all_staged_overrides("mockup").unwrap();
+        manager.apply_all_staged_overrides("mockup", false).unwrap();
 
         manager
             .override_flag_value(
@@ -862,7 +863,7 @@ mod tests {
         let root_dir = StorageRootDirMock::new();
         let mut manager = StorageFilesManager::new(&root_dir.tmp_dir.path());
         init_storage(&container, &mut manager);
-        manager.apply_all_staged_overrides("mockup").unwrap();
+        manager.apply_all_staged_overrides("mockup", false).unwrap();
 
         manager
             .override_flag_value(
@@ -899,7 +900,7 @@ mod tests {
         let root_dir = StorageRootDirMock::new();
         let mut manager = StorageFilesManager::new(&root_dir.tmp_dir.path());
         init_storage(&container, &mut manager);
-        manager.apply_all_staged_overrides("mockup").unwrap();
+        manager.apply_all_staged_overrides("mockup", false).unwrap();
 
         manager
             .override_flag_value(
@@ -1061,7 +1062,7 @@ mod tests {
         let mut manager = StorageFilesManager::new(&root_dir.tmp_dir.path());
         init_storage(&container, &mut manager);
         add_example_overrides(&mut manager);
-        manager.apply_all_staged_overrides("mockup").unwrap();
+        manager.apply_all_staged_overrides("mockup", false).unwrap();
 
         manager
             .remove_local_override(
@@ -1115,7 +1116,7 @@ mod tests {
                 ProtoFlagOverrideType::LOCAL_ON_REBOOT,
             )
             .unwrap();
-        manager.apply_all_staged_overrides("mockup").unwrap();
+        manager.apply_all_staged_overrides("mockup", false).unwrap();
         manager.remove_all_local_overrides().unwrap();
 
         let mut flag =
@@ -1164,7 +1165,7 @@ mod tests {
         let mut manager = StorageFilesManager::new(&root_dir.tmp_dir.path());
         init_storage(&container, &mut manager);
         add_example_overrides(&mut manager);
-        manager.apply_all_staged_overrides("mockup").unwrap();
+        manager.apply_all_staged_overrides("mockup", false).unwrap();
 
         let flags = manager.list_flags_in_package("com.android.aconfig.storage.test_1").unwrap();
 
@@ -1221,7 +1222,7 @@ mod tests {
         let mut manager = StorageFilesManager::new(&root_dir.tmp_dir.path());
         init_storage(&container, &mut manager);
         add_example_overrides(&mut manager);
-        manager.apply_all_staged_overrides("mockup").unwrap();
+        manager.apply_all_staged_overrides("mockup", false).unwrap();
 
         let flags = manager.list_flags_in_container("mockup").unwrap();
         assert_eq!(flags.len(), 8);

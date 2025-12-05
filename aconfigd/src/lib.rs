@@ -156,4 +156,10 @@ pub enum AconfigdError {
     FailToReadBuildFingerPrint {
         errmsg: rustutils::android::system_properties::PropertyWatcherError,
     },
+
+    #[error("fail to read system property {:?}: {:?}", .name,.errmsg)]
+    FailToReadSystemProperty {
+        name: String,
+        errmsg: rustutils::android::system_properties::PropertyWatcherError,
+    },
 }

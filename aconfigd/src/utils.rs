@@ -32,39 +32,40 @@ pub(crate) fn set_file_permission(file: &Path, mode: u32) -> Result<(), Aconfigd
 }
 
 /// Copy file
-pub(crate) fn copy_file(src: &Path, dst: &Path, mode: u32) -> Result<(), AconfigdError> {
-    if dst.exists() {
-        set_file_permission(dst, 0o644)?;
+pub(crate) fn copy_file(
+    src: &Path,
+    dst: &Path,
+    mode: u32,
+    fsync_required: bool,
+) -> Result<(), AconfigdError> {
+    if fsync_required {
+        copy_file_with_fsync(src, dst, mode)?;
+    } else {
+        copy_file_without_fsync(src, dst, mode)?;
     }
+    Ok(())
+}
 
-    let mut src_file = File::open(src).map_err(|errmsg| AconfigdError::FailToCopyFile {
-        src: src.display().to_string(),
-        dst: dst.display().to_string(),
-        errmsg,
-    })?;
+/// Copy file with fsync
+pub(crate) fn copy_file_with_fsync(src: &Path, dst: &Path, mode: u32) -> Result<(), AconfigdError> {
+    let temp_file = dst.with_extension("new");
+    let dst_file = copy_file_without_fsync(src, &temp_file, mode)?;
 
-    let mut dst_file = File::create(dst).map_err(|errmsg| AconfigdError::FailToCopyFile {
-        src: src.display().to_string(),
-        dst: dst.display().to_string(),
-        errmsg,
-    })?;
-
-    std::io::copy(&mut src_file, &mut dst_file).map_err(|errmsg| {
-        AconfigdError::FailToCopyFile {
-            src: src.display().to_string(),
-            dst: dst.display().to_string(),
-            errmsg,
-        }
-    })?;
-
-    // force kernel to flush file data in kernel buffer to filesystem
+    // Force kernel to flush file data in kernel buffer to filesystem
     dst_file.sync_all().map_err(|errmsg| AconfigdError::FailToCopyFile {
         src: src.display().to_string(),
+        dst: temp_file.display().to_string(),
+        errmsg,
+    })?;
+
+    // Atomically rename temp file to target file
+    std::fs::rename(&temp_file, dst).map_err(|errmsg| AconfigdError::FailToCopyFile {
+        src: src.display().to_string(),
         dst: dst.display().to_string(),
         errmsg,
     })?;
 
-    set_file_permission(dst, mode)
+    Ok(())
 }
 
 /// Copy file without fsync
@@ -72,10 +73,8 @@ pub(crate) fn copy_file_without_fsync(
     src: &Path,
     dst: &Path,
     mode: u32,
-) -> Result<(), AconfigdError> {
-    if dst.exists() {
-        set_file_permission(dst, 0o644)?;
-    }
+) -> Result<File, AconfigdError> {
+    remove_file(&dst)?;
 
     let mut src_file = File::open(src).map_err(|errmsg| AconfigdError::FailToCopyFile {
         src: src.display().to_string(),
@@ -97,7 +96,9 @@ pub(crate) fn copy_file_without_fsync(
         }
     })?;
 
-    set_file_permission(dst, mode)
+    set_file_permission(dst, mode)?;
+
+    Ok(dst_file)
 }
 
 /// Remove file
@@ -207,11 +208,11 @@ mod tests {
         let tmp_dir = tempdir().unwrap();
 
         let package_map = tmp_dir.path().join("package.map");
-        copy_file(&Path::new("./tests/data/package.map"), &package_map, 0o444).unwrap();
+        copy_file(&Path::new("./tests/data/package.map"), &package_map, 0o444, false).unwrap();
         assert_eq!(get_file_perm_mode(&package_map), 0o444);
 
         let flag_map = tmp_dir.path().join("flag.map");
-        copy_file(&Path::new("./tests/data/flag.map"), &flag_map, 0o644).unwrap();
+        copy_file(&Path::new("./tests/data/flag.map"), &flag_map, 0o644, false).unwrap();
         assert_eq!(get_file_perm_mode(&flag_map), 0o644);
     }
 
@@ -219,7 +220,7 @@ mod tests {
     fn test_remove_file() {
         let tmp_dir = tempdir().unwrap();
         let package_map = tmp_dir.path().join("package.map");
-        copy_file(&Path::new("./tests/data/package.map"), &package_map, 0o444).unwrap();
+        copy_file(&Path::new("./tests/data/package.map"), &package_map, 0o444, false).unwrap();
         assert!(remove_file(&package_map).is_ok());
         assert!(!package_map.exists());
     }
@@ -228,7 +229,7 @@ mod tests {
     fn test_set_file_permission() {
         let tmp_dir = tempdir().unwrap();
         let package_map = tmp_dir.path().join("package.map");
-        copy_file(&Path::new("./tests/data/package.map"), &package_map, 0o644).unwrap();
+        copy_file(&Path::new("./tests/data/package.map"), &package_map, 0o644, false).unwrap();
         set_file_permission(&package_map, 0o444).unwrap();
         assert_eq!(get_file_perm_mode(&package_map), 0o444);
     }
