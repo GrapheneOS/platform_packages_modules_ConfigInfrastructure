@@ -30,13 +30,6 @@ flag {
 }
 
 flag {
-  name: "enable_charger_dependency_for_reboot"
-  namespace: "core_experiments_team_internal"
-  description: "This flags controls allowing devices to configure reboot to require charging."
-  bug: "322076175"
-}
-
-flag {
   name: "fix_flag_staging_notification_resource_fetching"
   namespace: "core_experiments_team_internal"
   description: "Fix to avoid using a non-existing resources package for flag-staging notifications."

@@ -15,8 +15,7 @@
  */
 
 use crate::utils::{
-    copy_file, copy_file_without_fsync, get_file_mtime, get_files_digest, read_pb_from_file,
-    remove_file, write_pb_to_file,
+    copy_file, get_file_mtime, get_files_digest, read_pb_from_file, remove_file, write_pb_to_file,
 };
 use crate::AconfigdError;
 use aconfig_storage_file::{
@@ -161,12 +160,12 @@ impl StorageFiles {
         };
 
         debug!("copy {} storage files to persist and boot directories", container);
-        copy_file(package_map, &record.persist_package_map, 0o444)?;
-        copy_file(flag_map, &record.persist_flag_map, 0o444)?;
-        copy_file(flag_val, &record.persist_flag_val, 0o644)?;
-        copy_file(flag_info, &record.persist_flag_info, 0o644)?;
-        copy_file(flag_val, &record.boot_flag_val, 0o644)?;
-        copy_file(flag_info, &record.boot_flag_info, 0o644)?;
+        copy_file(package_map, &record.persist_package_map, 0o444, true)?;
+        copy_file(flag_map, &record.persist_flag_map, 0o444, true)?;
+        copy_file(flag_val, &record.persist_flag_val, 0o644, true)?;
+        copy_file(flag_info, &record.persist_flag_info, 0o644, true)?;
+        copy_file(flag_val, &record.boot_flag_val, 0o644, true)?;
+        copy_file(flag_info, &record.boot_flag_info, 0o644, true)?;
 
         let pb = ProtoLocalFlagOverrides::new();
         write_pb_to_file::<ProtoLocalFlagOverrides>(&pb, &record.local_overrides)?;
@@ -808,22 +807,27 @@ impl StorageFiles {
     }
 
     /// Apply both server and local overrides
-    pub(crate) fn apply_all_staged_overrides(&mut self) -> Result<(), AconfigdError> {
+    pub(crate) fn apply_all_staged_overrides(
+        &mut self,
+        fsync_required: bool,
+    ) -> Result<(), AconfigdError> {
         if self.reuse_boot_storage_files()? {
             debug!("reuse boot storage files for container {}", &self.storage_record.container);
             return Ok(());
         }
 
         debug!("apply staged server overrides for container {}", &self.storage_record.container);
-        copy_file_without_fsync(
+        copy_file(
             &self.storage_record.persist_flag_val,
             &self.storage_record.boot_flag_val,
             0o644,
+            fsync_required,
         )?;
-        copy_file_without_fsync(
+        copy_file(
             &self.storage_record.persist_flag_info,
             &self.storage_record.boot_flag_info,
             0o644,
+            fsync_required,
         )?;
         self.apply_staged_local_overrides()?;
         Ok(())
@@ -1290,10 +1294,10 @@ mod tests {
         let persist_flag_map = root_dir.maps_dir.join("mockup.flag.map");
         let persist_flag_val = root_dir.flags_dir.join("mockup.val");
         let persist_flag_info = root_dir.flags_dir.join("mockup.info");
-        copy_file(&container.package_map, &persist_package_map, 0o444).unwrap();
-        copy_file(&container.flag_map, &persist_flag_map, 0o444).unwrap();
-        copy_file(&container.flag_val, &persist_flag_val, 0o644).unwrap();
-        copy_file(&container.flag_info, &persist_flag_info, 0o644).unwrap();
+        copy_file(&container.package_map, &persist_package_map, 0o444, false).unwrap();
+        copy_file(&container.flag_map, &persist_flag_map, 0o444, false).unwrap();
+        copy_file(&container.flag_val, &persist_flag_val, 0o644, false).unwrap();
+        copy_file(&container.flag_info, &persist_flag_info, 0o644, false).unwrap();
 
         let mut pb = ProtoPersistStorageRecord::new();
         pb.set_version(123);
@@ -1585,7 +1589,7 @@ mod tests {
         storage_files.stage_server_override(&context_two, "false").unwrap();
         storage_files.stage_local_override(&context_two, "true").unwrap();
 
-        storage_files.apply_all_staged_overrides().unwrap();
+        storage_files.apply_all_staged_overrides(false).unwrap();
 
         assert!(storage_files.storage_record.boot_flag_val.exists());
         assert!(storage_files.storage_record.boot_flag_info.exists());
@@ -1596,7 +1600,7 @@ mod tests {
         // reuse boot file case 1: reuse
         let boot_val_mtime = get_file_mtime(&storage_files.storage_record.boot_flag_val).unwrap();
         let boot_info_mtime = get_file_mtime(&storage_files.storage_record.boot_flag_info).unwrap();
-        storage_files.apply_all_staged_overrides().unwrap();
+        storage_files.apply_all_staged_overrides(false).unwrap();
         assert_eq!(
             boot_val_mtime,
             get_file_mtime(&storage_files.storage_record.boot_flag_val).unwrap()
@@ -1609,7 +1613,7 @@ mod tests {
         // reuse boot file case 2: persist file is newer, do not reuse
         let f = std::fs::File::open(&storage_files.storage_record.persist_flag_val).unwrap();
         f.set_modified(std::time::SystemTime::now()).unwrap();
-        storage_files.apply_all_staged_overrides().unwrap();
+        storage_files.apply_all_staged_overrides(false).unwrap();
         let new_boot_val_mtime =
             get_file_mtime(&storage_files.storage_record.boot_flag_val).unwrap();
         let new_boot_info_mtime =
@@ -1619,7 +1623,7 @@ mod tests {
 
         // reuse boot file case 3: no boot file
         remove_file(&storage_files.storage_record.boot_flag_val).unwrap();
-        storage_files.apply_all_staged_overrides().unwrap();
+        storage_files.apply_all_staged_overrides(false).unwrap();
         assert!(
             get_file_mtime(&storage_files.storage_record.boot_flag_val).unwrap()
                 > new_boot_val_mtime
@@ -1802,7 +1806,7 @@ mod tests {
             .unwrap();
         storage_files.stage_server_override(&context, "false").unwrap();
         storage_files.stage_local_override(&context, "true").unwrap();
-        storage_files.apply_all_staged_overrides().unwrap();
+        storage_files.apply_all_staged_overrides(false).unwrap();
 
         flag = storage_files
             .get_flag_snapshot("com.android.aconfig.storage.test_1", "disabled_rw")
@@ -1840,7 +1844,7 @@ mod tests {
             .unwrap();
         storage_files.stage_server_override(&context_two, "false").unwrap();
         storage_files.stage_local_override(&context_two, "true").unwrap();
-        storage_files.apply_all_staged_overrides().unwrap();
+        storage_files.apply_all_staged_overrides(false).unwrap();
 
         let flags =
             storage_files.list_flags_in_package("com.android.aconfig.storage.test_1").unwrap();
@@ -1906,7 +1910,7 @@ mod tests {
             .unwrap();
         storage_files.stage_server_override(&context_two, "false").unwrap();
         storage_files.stage_local_override(&context_two, "true").unwrap();
-        storage_files.apply_all_staged_overrides().unwrap();
+        storage_files.apply_all_staged_overrides(false).unwrap();
 
         let flags = storage_files.list_all_flags().unwrap();
         assert_eq!(flags.len(), 8);
