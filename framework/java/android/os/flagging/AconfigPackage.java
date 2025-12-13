@@ -35,6 +35,7 @@ import com.android.modules.utils.ravenwood.RavenwoodHelper;
 
 import java.io.Closeable;
 import java.io.File;
+import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
@@ -60,6 +61,9 @@ public class AconfigPackage {
     private static final String BOOT_PATH = getStorageRootPath() + "/metadata/aconfig/boot/";
 
     private static final String PMAP_FILE_EXT = ".package.map";
+
+    /* Aconfig files default to Little Endian */
+    private static final ByteOrder BYTE_ORDER = ByteOrder.LITTLE_ENDIAN;
 
     /** Returns "" on the device side, but on Ravenwood, we use a storage root path. */
     @android.ravenwood.annotation.RavenwoodReplace
@@ -235,9 +239,11 @@ public class AconfigPackage {
     // Map a storage file given file path
     private static MappedByteBuffer mapStorageFile(String file) {
         FileChannel channel = null;
+        MappedByteBuffer buffer;
         try {
             channel = FileChannel.open(Paths.get(file), StandardOpenOption.READ);
-            return channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
+            buffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
+            buffer.order(BYTE_ORDER);
         } catch (Exception e) {
             throw new AconfigStorageReadException(
                     AconfigStorageReadException.ERROR_CANNOT_READ_STORAGE_FILE,
@@ -246,6 +252,7 @@ public class AconfigPackage {
         } finally {
             quietlyDispose(channel);
         }
+        return buffer;
     }
 
     private static void quietlyDispose(Closeable closable) {
