@@ -1443,7 +1443,7 @@ public final class DeviceConfig {
      * @return {@code true} if the value was set, {@code false} if the storage implementation throws
      * errors.
      * @hide
-     * @see #resetToDefaults(int, String).
+     * @see #resetToDefaults(int, String)
      */
     @SystemApi
     @RequiresPermission(anyOf = {WRITE_DEVICE_CONFIG, WRITE_ALLOWLISTED_DEVICE_CONFIG})
