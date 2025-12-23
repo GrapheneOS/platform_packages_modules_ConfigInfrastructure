@@ -62,14 +62,9 @@ pub fn start_socket() -> Result<()> {
 /// initialize mainline module storage files
 pub fn init() -> Result<()> {
     let mut aconfigd = Aconfigd::new(Path::new(ACONFIGD_ROOT_DIR), Path::new(STORAGE_RECORDS));
-    if !aconfig_new_storage_flags::optimize_boot_copy_creation() {
-        aconfigd.remove_boot_files()?;
-    }
     aconfigd.initialize_from_storage_record()?;
     aconfigd.initialize_mainline_storage()?;
-    if aconfig_new_storage_flags::optimize_boot_copy_creation() {
-        aconfigd.remove_inactive_boot_files()?;
-    }
+    aconfigd.remove_inactive_boot_files()?;
 
     Ok(())
 }
