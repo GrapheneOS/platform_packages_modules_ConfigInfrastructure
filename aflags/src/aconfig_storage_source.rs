@@ -193,7 +193,7 @@ fn send_override_command(
 }
 
 impl FlagSource for AconfigStorageSource {
-    fn list_flags() -> Result<Vec<Flag>> {
+    fn list_flags(&self) -> Result<Vec<Flag>> {
         let flag_defaults = load_protos::load()?;
         let system_messages = send_list_flags_command(AconfigdSocket::System);
         let mainline_messages = send_list_flags_command(AconfigdSocket::Mainline);
@@ -238,6 +238,7 @@ impl FlagSource for AconfigStorageSource {
     }
 
     fn override_flag(
+        &self,
         _namespace: &str,
         qualified_name: &str,
         value: &str,
@@ -255,7 +256,7 @@ impl FlagSource for AconfigStorageSource {
         Ok(())
     }
 
-    fn unset_flag(_namespace: &str, qualified_name: &str, immediate: bool) -> Result<()> {
+    fn unset_flag(&self, _namespace: &str, qualified_name: &str, immediate: bool) -> Result<()> {
         let last_period_index = qualified_name.rfind('.').ok_or(anyhow!("No period found"))?;
         let (package, flag_name) = qualified_name.split_at(last_period_index);
 

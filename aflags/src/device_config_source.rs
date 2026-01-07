@@ -115,7 +115,7 @@ fn make_device_config_flag(
 }
 
 impl FlagSource for DeviceConfigSource {
-    fn list_flags() -> Result<Vec<Flag>> {
+    fn list_flags(&self) -> Result<Vec<Flag>> {
         // Note: Since Mainline Beta flags are *not* listed in aconfig_flags.pb, we are not using
         // that file as a source of truth for flags. Therefore, these results are only useful for
         // merging with the flags from AconfigStorageSource, not displaying to the user directly.
@@ -135,6 +135,7 @@ impl FlagSource for DeviceConfigSource {
     }
 
     fn override_flag(
+        &self,
         namespace: &str,
         qualified_name: &str,
         value: &str,
@@ -144,7 +145,7 @@ impl FlagSource for DeviceConfigSource {
         execute_device_config_command(&["override", namespace, qualified_name, value]).map(|_| ())
     }
 
-    fn unset_flag(namespace: &str, qualified_name: &str, _immediate: bool) -> Result<()> {
+    fn unset_flag(&self, namespace: &str, qualified_name: &str, _immediate: bool) -> Result<()> {
         // device config clear_override command always clear the boot value as well
         execute_device_config_command(&["clear_override", namespace, qualified_name]).map(|_| ())
     }
@@ -154,6 +155,8 @@ impl FlagSource for DeviceConfigSource {
 mod tests {
     use super::*;
     use rand::Rng;
+
+    const FLAG_SOURCE: DeviceConfigSource = DeviceConfigSource {};
 
     #[test]
     fn test_parse_device_config_output() {
@@ -191,13 +194,9 @@ android.flag_two=nonsense
     fn test_override_flag() {
         let mut rng = rand::thread_rng();
         let namespace = rng.gen::<u32>().to_string();
-        DeviceConfigSource::override_flag(
-            &namespace,
-            "aflags_test_package.aflags_test_flag",
-            "false",
-            false,
-        )
-        .unwrap();
+        FLAG_SOURCE
+            .override_flag(&namespace, "aflags_test_package.aflags_test_flag", "false", false)
+            .unwrap();
 
         let result = execute_device_config_command(&["list", &namespace]).unwrap();
         let flags = parse_device_config_output(&result).unwrap();
@@ -211,8 +210,7 @@ android.flag_two=nonsense
             flags.get(&format!("{namespace}:aflags_test_package.aflags_test_flag")).unwrap();
         assert_eq!(*flag_value, FlagValue::Disabled);
 
-        DeviceConfigSource::unset_flag(&namespace, "aflags_test_package.aflags_test_flag", false)
-            .unwrap();
+        FLAG_SOURCE.unset_flag(&namespace, "aflags_test_package.aflags_test_flag", false).unwrap();
     }
 
     #[test]
@@ -220,15 +218,10 @@ android.flag_two=nonsense
     fn test_unset_flag() {
         let mut rng = rand::thread_rng();
         let namespace = rng.gen::<u32>().to_string();
-        DeviceConfigSource::override_flag(
-            &namespace,
-            "aflags_test_package.aflags_test_flag",
-            "false",
-            false,
-        )
-        .unwrap();
-        DeviceConfigSource::unset_flag(&namespace, "aflags_test_package.aflags_test_flag", false)
+        FLAG_SOURCE
+            .override_flag(&namespace, "aflags_test_package.aflags_test_flag", "false", false)
             .unwrap();
+        FLAG_SOURCE.unset_flag(&namespace, "aflags_test_package.aflags_test_flag", false).unwrap();
 
         let result = execute_device_config_command(&["list", &namespace]).unwrap();
         let flags = parse_device_config_output(&result).unwrap();
