@@ -882,7 +882,6 @@ final class WritableFlags {
                 "wifi/stationary_scan_rssi_valid_time_ms",
                 "wifi/wfd_failure_bugreport_enabled",
                 "window_manager/ActivitySecurity__asm_restrictions_enabled",
-                "window_manager/AlwaysOnMagnifier__enable_always_on_magnifier",
                 "window_manager/asm_restrictions_enabled",
                 "window_manager/asm_toasts_enabled",
                 "window_manager/enable_always_on_magnifier",
