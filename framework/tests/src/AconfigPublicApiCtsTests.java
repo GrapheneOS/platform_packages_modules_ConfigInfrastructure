@@ -42,6 +42,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -125,6 +126,13 @@ public class AconfigPublicApiCtsTests {
             String container = flag.container;
             String packageName = flag.package_;
             String flagName = flag.name;
+
+            // Skip vendor if there are no flag storage files in vendor on this image. A GSI image
+            // may be flashed against a vendor image that doesn't have storage files. GSI images
+            // do not have vendor partitions.
+            if (container.equals("vendor") && !new File("/vendor/etc/aconfig/package.map").exists()) {
+                continue;
+            }
 
             PackageTable pTable = fp.getPackageTable(container);
             PackageTable.Node pNode = pTable.get(packageName);
