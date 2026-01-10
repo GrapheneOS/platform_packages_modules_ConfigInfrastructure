@@ -17,6 +17,7 @@
 use crate::storage_files::{FlagSnapshot, StorageFiles};
 use crate::utils::{get_files_digest, read_pb_from_file, remove_file, write_pb_to_file};
 use crate::AconfigdError;
+use aconfig_storage_file::FlagInfoBit;
 use aconfigd_protos::{
     ProtoFlagOverride, ProtoFlagOverrideType, ProtoLocalFlagOverrides, ProtoOTAFlagStagingMessage,
     ProtoPersistStorageRecord, ProtoPersistStorageRecords, ProtoRemoveOverrideType,
@@ -144,7 +145,10 @@ impl StorageFilesManager {
         for f in server_overrides.iter() {
             let context = storage_files.get_package_flag_context(&f.package_name, &f.flag_name)?;
             if context.flag_exists {
-                storage_files.stage_server_override(&context, &f.flag_value)?;
+                let attribute = storage_files.get_flag_attribute(&context)?;
+                if (attribute & FlagInfoBit::IsReadWrite as u8) != 0 {
+                    storage_files.stage_server_override(&context, &f.flag_value)?;
+                }
             }
         }
 
@@ -155,8 +159,11 @@ impl StorageFilesManager {
             let context =
                 storage_files.get_package_flag_context(f.package_name(), f.flag_name())?;
             if context.flag_exists {
-                storage_files.stage_local_override(&context, f.flag_value())?;
-                new_pb.overrides.push(f);
+                let attribute = storage_files.get_flag_attribute(&context)?;
+                if (attribute & FlagInfoBit::IsReadWrite as u8) != 0 {
+                    storage_files.stage_local_override(&context, f.flag_value())?;
+                    new_pb.overrides.push(f);
+                }
             }
         }
         write_pb_to_file::<ProtoLocalFlagOverrides>(
@@ -745,6 +752,50 @@ mod tests {
         pb.set_flag_name("disabled_rw".to_string());
         pb.set_flag_value("true".to_string());
         assert_eq!(local_overrides[0], pb);
+    }
+
+    #[test]
+    fn test_overrides_after_update_container_with_some_flag_become_RO() {
+        let container = ContainerMock::new();
+        let root_dir = StorageRootDirMock::new();
+        let mut manager = StorageFilesManager::new(&root_dir.tmp_dir.path());
+        init_storage(&container, &mut manager);
+        add_example_overrides(&mut manager);
+
+        // copy files over to mimic a container update
+        std::fs::copy("./tests/data/package.map", &container.package_map).unwrap();
+        std::fs::copy("./tests/data/flag.map", &container.flag_map).unwrap();
+        std::fs::copy("./tests/data/flag.val", &container.flag_val).unwrap();
+        std::fs::copy("./tests/data/less_rw_flags.flag.info", &container.flag_info).unwrap();
+
+        // update container
+        manager
+            .add_or_update_container_storage_files(
+                &container.name,
+                &container.package_map,
+                &container.flag_map,
+                &container.flag_val,
+                &container.flag_info,
+            )
+            .unwrap();
+
+        // verify that server override is persisted only for the RW flag
+        let storage_files = manager.get_storage_files(&container.name).unwrap();
+        let server_overrides = storage_files.get_all_server_overrides().unwrap();
+        assert_eq!(server_overrides.len(), 1);
+        assert_eq!(
+            server_overrides[0],
+            FlagValueSummary {
+                package_name: "com.android.aconfig.storage.test_1".to_string(),
+                flag_name: "enabled_rw".to_string(),
+                flag_value: "false".to_string(),
+                value_type: StoredFlagType::ReadWriteBoolean,
+            }
+        );
+
+        // verify the local override to now an RO flag is dropped
+        let local_overrides = storage_files.get_all_local_overrides().unwrap();
+        assert_eq!(local_overrides.len(), 0);
     }
 
     #[test]

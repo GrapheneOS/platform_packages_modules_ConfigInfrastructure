@@ -83,6 +83,7 @@ rust_test {
         "./tests/data/flag.map",
         "./tests/data/flag.val",
         "./tests/data/flag.info",
+        "./tests/data/less_rw_flags.flag.info",
         "./tests/data/container_with_more_flags.package.map",
         "./tests/data/container_with_more_flags.flag.map",
         "./tests/data/container_with_more_flags.flag.val",
