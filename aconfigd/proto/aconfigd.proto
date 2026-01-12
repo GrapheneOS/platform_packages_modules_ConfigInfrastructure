@@ -30,6 +30,8 @@ message PersistStorageRecord {
 
 message PersistStorageRecords {
   repeated PersistStorageRecord records = 1;
+  optional string build_fingerprint = 2;
+  optional string security_patch = 3;
 }
 
 message FlagOverride {
