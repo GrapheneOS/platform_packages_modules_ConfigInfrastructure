@@ -73,7 +73,7 @@ public final class FlagManager {
      * @param buildFingerprint a system build fingerprint identifier.
      * @param flags map from flag qualified name to new value.
      * @throws AconfigStorageWriteException if the write fails.
-     * @see android.os.Build.FINGERPRINT
+     * @see android.os.Build#FINGERPRINT
      */
     @FlaggedApi(Flags.FLAG_NEW_STORAGE_PUBLIC_API)
     public void setBooleanOverridesOnSystemBuildFingerprint(
