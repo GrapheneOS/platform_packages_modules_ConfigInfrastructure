@@ -136,14 +136,24 @@ impl Flag {
 }
 
 trait FlagSource {
-    fn list_flags() -> Result<Vec<Flag>>;
+    fn list_flags(&self) -> Result<Vec<Flag>>;
     fn override_flag(
+        &self,
         namespace: &str,
         qualified_name: &str,
         value: &str,
         immediate: bool,
     ) -> Result<()>;
-    fn unset_flag(namespace: &str, qualified_name: &str, immediate: bool) -> Result<()>;
+    fn unset_flag(&self, namespace: &str, qualified_name: &str, immediate: bool) -> Result<()>;
+}
+
+struct FlagSourcesProvider<A, B>
+where
+    A: FlagSource,
+    B: FlagSource,
+{
+    aconfigd_source: A,
+    device_config_source: B,
 }
 
 const ABOUT_TEXT: &str = "Tool for reading and writing flags.
@@ -272,15 +282,23 @@ fn format_flag_row(flag: &Flag, info: &PaddingInfo) -> String {
     )
 }
 
-fn get_flag(qualified_name: &str) -> Result<Flag> {
-    let flags_binding = AconfigStorageSource::list_flags()?;
+fn get_flag<A: FlagSource, B: FlagSource>(
+    qualified_name: &str,
+    provider: &FlagSourcesProvider<A, B>,
+) -> Result<Flag> {
+    let flags_binding = provider.aconfigd_source.list_flags()?;
     let flag = flags_binding.iter().find(|f| f.qualified_name() == qualified_name).ok_or(
         anyhow!("no aconfig flag '{qualified_name}'. Does the flag have an .aconfig definition?"),
     )?;
     Ok(flag.clone())
 }
 
-fn set_flag(flag: &Flag, value: &str, immediate: bool) -> Result<()> {
+fn set_flag<A: FlagSource, B: FlagSource>(
+    flag: &Flag,
+    value: &str,
+    immediate: bool,
+    provider: &FlagSourcesProvider<A, B>,
+) -> Result<()> {
     ensure!(
         flag.permission == FlagPermission::ReadWrite,
         format!(
@@ -289,9 +307,14 @@ fn set_flag(flag: &Flag, value: &str, immediate: bool) -> Result<()> {
         )
     );
 
-    AconfigStorageSource::override_flag(&flag.namespace, &flag.qualified_name(), value, immediate)?;
+    provider.aconfigd_source.override_flag(
+        &flag.namespace,
+        &flag.qualified_name(),
+        value,
+        immediate,
+    )?;
     if flag.storage_backend == FlagStorageBackend::DeviceConfig {
-        DeviceConfigSource::override_flag(
+        provider.device_config_source.override_flag(
             &flag.namespace,
             &flag.qualified_name(),
             value,
@@ -301,10 +324,18 @@ fn set_flag(flag: &Flag, value: &str, immediate: bool) -> Result<()> {
     Ok(())
 }
 
-fn unset(flag: &Flag, immediate: bool) -> Result<()> {
-    AconfigStorageSource::unset_flag(&flag.namespace, &flag.qualified_name(), immediate)?;
+fn unset<A: FlagSource, B: FlagSource>(
+    flag: &Flag,
+    immediate: bool,
+    provider: &FlagSourcesProvider<A, B>,
+) -> Result<()> {
+    provider.aconfigd_source.unset_flag(&flag.namespace, &flag.qualified_name(), immediate)?;
     if flag.storage_backend == FlagStorageBackend::DeviceConfig {
-        DeviceConfigSource::unset_flag(&flag.namespace, &flag.qualified_name(), immediate)?;
+        provider.device_config_source.unset_flag(
+            &flag.namespace,
+            &flag.qualified_name(),
+            immediate,
+        )?;
     }
     Ok(())
 }
@@ -409,15 +440,18 @@ fn resolve_flags(
     resolved_flags
 }
 
-fn list_flags(container: Option<String>) -> Result<Vec<Flag>> {
+fn list_flags<A: FlagSource, B: FlagSource>(
+    container: Option<String>,
+    provider: &FlagSourcesProvider<A, B>,
+) -> Result<Vec<Flag>> {
     let flags_unfiltered = if aconfig_flags::auto_generated::aflags_list_mainline_beta() {
         resolve_flags(
-            AconfigStorageSource::list_flags()?,
-            DeviceConfigSource::list_flags()?,
+            provider.aconfigd_source.list_flags()?,
+            provider.device_config_source.list_flags()?,
             get_mainline_beta_namespace_map(),
         )
     } else {
-        AconfigStorageSource::list_flags()?
+        provider.aconfigd_source.list_flags()?
     };
 
     let flags = (Filter { container }).apply(&flags_unfiltered);
@@ -425,10 +459,13 @@ fn list_flags(container: Option<String>) -> Result<Vec<Flag>> {
     Ok(flags)
 }
 
-fn list(container: Option<String>) -> Result<String> {
+fn list<A: FlagSource, B: FlagSource>(
+    container: Option<String>,
+    provider: &FlagSourcesProvider<A, B>,
+) -> Result<String> {
     check_container(&container)?;
 
-    let flags = list_flags(container)?;
+    let flags = list_flags(container, provider)?;
 
     let padding_info = PaddingInfo {
         longest_flag_col: flags.iter().map(|f| f.qualified_name().len()).max().unwrap_or(0),
@@ -461,22 +498,27 @@ fn list(container: Option<String>) -> Result<String> {
 fn main() -> Result<()> {
     ensure!(nix::unistd::Uid::current().is_root(), "must be root");
 
+    let flag_sources_provider = FlagSourcesProvider {
+        aconfigd_source: AconfigStorageSource {},
+        device_config_source: DeviceConfigSource {},
+    };
+
     let cli = Cli::parse();
     let output = match cli.command {
-        Command::List { container } => {
-            list(container).map_err(|err| anyhow!("could not list flags: {err}")).map(Some)
-        }
+        Command::List { container } => list(container, &flag_sources_provider)
+            .map_err(|err| anyhow!("could not list flags: {err}"))
+            .map(Some),
         Command::Enable { qualified_name, immediate } => {
-            let flag = get_flag(&qualified_name)?;
-            set_flag(&flag, "true", immediate).map(|_| None)
+            let flag = get_flag(&qualified_name, &flag_sources_provider)?;
+            set_flag(&flag, "true", immediate, &flag_sources_provider).map(|_| None)
         }
         Command::Disable { qualified_name, immediate } => {
-            let flag = get_flag(&qualified_name)?;
-            set_flag(&flag, "false", immediate).map(|_| None)
+            let flag = get_flag(&qualified_name, &flag_sources_provider)?;
+            set_flag(&flag, "false", immediate, &flag_sources_provider).map(|_| None)
         }
         Command::Unset { qualified_name, immediate } => {
-            let flag = get_flag(&qualified_name)?;
-            unset(&flag, immediate).map(|_| None)
+            let flag = get_flag(&qualified_name, &flag_sources_provider)?;
+            unset(&flag, immediate, &flag_sources_provider).map(|_| None)
         }
     };
     match output {
@@ -506,6 +548,12 @@ mod tests {
     use rand::Rng;
 
     struct TestFlagBuilder(Flag);
+
+    const FLAG_SOURCES_PROVIDER: FlagSourcesProvider<AconfigStorageSource, DeviceConfigSource> =
+        FlagSourcesProvider {
+            aconfigd_source: AconfigStorageSource {},
+            device_config_source: DeviceConfigSource {},
+        };
 
     #[allow(dead_code)]
     impl TestFlagBuilder {
@@ -673,7 +721,7 @@ mod tests {
         };
 
         // negative test to ensure value is not synced over to device config
-        assert!(set_flag(&flag, "false", false).is_ok());
+        assert!(set_flag(&flag, "false", false, &FLAG_SOURCES_PROVIDER).is_ok());
 
         let result = execute_device_config_command(&["list", &namespace]).unwrap();
         let flags = parse_device_config_output(&result).unwrap();
@@ -685,7 +733,7 @@ mod tests {
 
         // test setting mainline beta flag
         flag.storage_backend = FlagStorageBackend::DeviceConfig;
-        assert!(set_flag(&flag, "true", false).is_ok());
+        assert!(set_flag(&flag, "true", false, &FLAG_SOURCES_PROVIDER).is_ok());
 
         let result = execute_device_config_command(&["list", &namespace]).unwrap();
         let flags = parse_device_config_output(&result).unwrap();
@@ -698,7 +746,7 @@ mod tests {
         assert_eq!(*value, FlagValue::Enabled);
 
         // test unset mainline beta flag
-        assert!(unset(&flag, false).is_ok());
+        assert!(unset(&flag, false, &FLAG_SOURCES_PROVIDER).is_ok());
 
         let result = execute_device_config_command(&["list", &namespace]).unwrap();
         let flags = parse_device_config_output(&result).unwrap();
