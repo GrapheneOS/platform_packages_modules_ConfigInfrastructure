@@ -15,7 +15,10 @@
  */
 
 use crate::storage_files_manager::StorageFilesManager;
-use crate::utils::{read_pb_from_file, remove_file, write_pb_to_file};
+use crate::utils::{
+    compare_build_info, get_build_fingerprint, get_security_patch, read_pb_from_file, remove_file,
+    write_pb_to_file,
+};
 use crate::AconfigdError;
 use aconfigd_protos::{
     ProtoFlagOverrideMessage, ProtoFlagQueryMessage, ProtoFlagQueryReturnMessage,
@@ -35,17 +38,83 @@ use std::path::{Path, PathBuf};
 pub struct Aconfigd {
     pub root_dir: PathBuf,
     pub persist_storage_records: PathBuf,
+    pub build_fingerprint: String,
+    pub security_patch: String,
     pub(crate) storage_manager: StorageFilesManager,
 }
 
 impl Aconfigd {
     /// Constructor
     pub fn new(root_dir: &Path, records: &Path) -> Self {
+        let build_fingerprint = if aconfig_new_storage_flags::detect_device_build_switch() {
+            match get_build_fingerprint() {
+                Ok(fingerprint) => {
+                    debug!("device build fingerprint {}", fingerprint);
+                    fingerprint
+                }
+                Err(errmsg) => {
+                    debug!("failed to get device build fingerprint {}", errmsg);
+                    String::from("Error")
+                }
+            }
+        } else {
+            String::new()
+        };
+
+        let security_patch = if aconfig_new_storage_flags::detect_device_build_switch() {
+            match get_security_patch() {
+                Ok(date) => {
+                    debug!("device security patch {}", date);
+                    date
+                }
+                Err(errmsg) => {
+                    debug!("failed to get device security patch {}", errmsg);
+                    String::from("Error")
+                }
+            }
+        } else {
+            String::new()
+        };
+
         Self {
             root_dir: root_dir.to_path_buf(),
             persist_storage_records: records.to_path_buf(),
+            build_fingerprint,
+            security_patch,
             storage_manager: StorageFilesManager::new(root_dir),
         }
+    }
+
+    /// Check for flag wipe
+    pub fn check_for_flag_wipe(&self) -> Result<(), AconfigdError> {
+        let pb = read_pb_from_file::<ProtoPersistStorageRecords>(&self.persist_storage_records)?;
+
+        let fingerprint_change = pb.has_build_fingerprint()
+            && !compare_build_info(pb.build_fingerprint(), &self.build_fingerprint);
+        if fingerprint_change {
+            debug!(
+                "detecting build fingerprint changes from {} to {}",
+                pb.build_fingerprint(),
+                &self.build_fingerprint
+            );
+        }
+
+        let security_level_downgrade =
+            pb.has_security_patch() && *pb.security_patch() > *self.security_patch;
+        if security_level_downgrade {
+            debug!(
+                "detecting security level downgrade from {} to {}",
+                pb.security_patch(),
+                &self.security_patch
+            );
+        }
+
+        if fingerprint_change || security_level_downgrade {
+            debug!("removing persist storage records");
+            remove_file(&self.persist_storage_records)?
+        }
+
+        Ok(())
     }
 
     /// Remove old boot storage record
@@ -136,8 +205,11 @@ impl Aconfigd {
             )?;
         }
 
-        self.storage_manager
-            .write_persist_storage_records_to_file(&self.persist_storage_records)?;
+        self.storage_manager.write_persist_storage_records_to_file(
+            &self.build_fingerprint,
+            &self.security_patch,
+            &self.persist_storage_records,
+        )?;
 
         self.storage_manager.apply_staged_ota_flags()?;
 
@@ -232,8 +304,11 @@ impl Aconfigd {
             self.storage_manager.apply_all_staged_overrides(container, false)?;
         }
 
-        self.storage_manager
-            .write_persist_storage_records_to_file(&self.persist_storage_records)?;
+        self.storage_manager.write_persist_storage_records_to_file(
+            &self.build_fingerprint,
+            &self.security_patch,
+            &self.persist_storage_records,
+        )?;
 
         Ok(())
     }
@@ -313,8 +388,11 @@ impl Aconfigd {
             Path::new(request_pb.flag_info()),
         )?;
 
-        self.storage_manager
-            .write_persist_storage_records_to_file(&self.persist_storage_records)?;
+        self.storage_manager.write_persist_storage_records_to_file(
+            &self.build_fingerprint,
+            &self.security_patch,
+            &self.persist_storage_records,
+        )?;
         self.storage_manager.apply_all_staged_overrides(request_pb.container(), false)?;
 
         let mut return_pb = ProtoStorageReturnMessage::new();
@@ -507,7 +585,7 @@ impl Aconfigd {
 mod tests {
     use super::*;
     use crate::test_utils::{has_same_content, ContainerMock, StorageRootDirMock};
-    use crate::utils::{get_files_digest, read_pb_from_file};
+    use crate::utils::{get_files_digest, read_pb_from_file, write_pb_to_file};
     use aconfigd_protos::{
         ProtoFlagOverride, ProtoFlagOverrideType, ProtoLocalFlagOverrides,
         ProtoPersistStorageRecord,
@@ -1174,5 +1252,127 @@ mod tests {
         aconfigd.initialize_mainline_storage().unwrap();
         let entries: Vec<_> = std::fs::read_dir(&root_dir.flags_dir).into_iter().collect();
         assert!(entries.len() > 0);
+    }
+
+    #[test]
+    fn test_check_for_flag_wipe_on_build_code_change() {
+        let root_dir = StorageRootDirMock::new();
+        let mut aconfigd = create_mock_aconfigd(&root_dir);
+        aconfigd.build_fingerprint =
+            "google/raven/raven:Baklava/ZP1A.251212.002/14579831:userdebug/dev-keys".to_string();
+        aconfigd.security_patch = "2025-01-05".to_string();
+
+        let mut pb = ProtoPersistStorageRecords::new();
+        pb.set_build_fingerprint(
+            "google/raven/raven:Baklava/CP1A.251212.002/14579831:userdebug/dev-keys".to_string(),
+        );
+        pb.set_security_patch("2025-01-05".to_string());
+        write_pb_to_file(&pb, &aconfigd.persist_storage_records).unwrap();
+
+        assert!(aconfigd.persist_storage_records.exists());
+        aconfigd.check_for_flag_wipe().unwrap();
+        assert!(!aconfigd.persist_storage_records.exists());
+    }
+
+    #[test]
+    fn test_check_for_flag_wipe_on_build_type_change() {
+        let root_dir = StorageRootDirMock::new();
+        let mut aconfigd = create_mock_aconfigd(&root_dir);
+        aconfigd.build_fingerprint =
+            "google/raven/raven:Baklava/ZP1A.251212.002/14579831:userdebug/dev-keys".to_string();
+        aconfigd.security_patch = "2025-01-05".to_string();
+
+        let mut pb = ProtoPersistStorageRecords::new();
+        pb.set_build_fingerprint(
+            "google/raven/raven:Baklava/ZP1A.251212.002/14579831:eng/dev-keys".to_string(),
+        );
+        pb.set_security_patch("2025-01-05".to_string());
+        write_pb_to_file(&pb, &aconfigd.persist_storage_records).unwrap();
+
+        assert!(aconfigd.persist_storage_records.exists());
+        aconfigd.check_for_flag_wipe().unwrap();
+        assert!(!aconfigd.persist_storage_records.exists());
+    }
+
+    #[test]
+    fn test_check_for_flag_wipe_on_security_patch_downgrade() {
+        let root_dir = StorageRootDirMock::new();
+        let mut aconfigd = create_mock_aconfigd(&root_dir);
+        aconfigd.build_fingerprint =
+            "google/raven/raven:Baklava/ZP1A.251212.002/14579831:userdebug/dev-keys".to_string();
+        aconfigd.security_patch = "2024-12-05".to_string();
+
+        let mut pb = ProtoPersistStorageRecords::new();
+        pb.set_build_fingerprint(
+            "google/raven/raven:Baklava/ZP1A.251212.002/14579831:userdebug/dev-keys".to_string(),
+        );
+        pb.set_security_patch("2025-01-05".to_string());
+        write_pb_to_file(&pb, &aconfigd.persist_storage_records).unwrap();
+
+        assert!(aconfigd.persist_storage_records.exists());
+        aconfigd.check_for_flag_wipe().unwrap();
+        assert!(!aconfigd.persist_storage_records.exists());
+    }
+
+    #[test]
+    fn test_check_for_flag_wipe_no_wipe() {
+        let root_dir = StorageRootDirMock::new();
+        let mut aconfigd = create_mock_aconfigd(&root_dir);
+        aconfigd.build_fingerprint =
+            "google/raven/raven:Baklava/ZP1A.251212.002/14579831:userdebug/dev-keys".to_string();
+        aconfigd.security_patch = "2025-01-05".to_string();
+
+        let mut pb = ProtoPersistStorageRecords::new();
+        pb.set_build_fingerprint(
+            "google/raven/raven:Baklava/ZP1A.251212.002/14579831:userdebug/dev-keys".to_string(),
+        );
+        pb.set_security_patch("2025-01-05".to_string());
+        write_pb_to_file(&pb, &aconfigd.persist_storage_records).unwrap();
+
+        assert!(aconfigd.persist_storage_records.exists());
+        aconfigd.check_for_flag_wipe().unwrap();
+        assert!(aconfigd.persist_storage_records.exists());
+
+        // security patch is newer, should not wipe
+        aconfigd.security_patch = "2025-02-05".to_string();
+        aconfigd.check_for_flag_wipe().unwrap();
+        assert!(aconfigd.persist_storage_records.exists());
+    }
+
+    #[test]
+    fn test_check_for_flag_wipe_no_wipe_on_partial_info() {
+        let root_dir = StorageRootDirMock::new();
+        let mut aconfigd = create_mock_aconfigd(&root_dir);
+        aconfigd.build_fingerprint =
+            "google/raven/raven:Baklava/ZP1A.251212.002/14579831:userdebug/dev-keys".to_string();
+        aconfigd.security_patch = "2025-01-05".to_string();
+
+        // No fingerprint
+        let mut pb = ProtoPersistStorageRecords::new();
+        pb.set_security_patch("2025-01-05".to_string());
+        write_pb_to_file(&pb, &aconfigd.persist_storage_records).unwrap();
+
+        assert!(aconfigd.persist_storage_records.exists());
+        aconfigd.check_for_flag_wipe().unwrap();
+        assert!(aconfigd.persist_storage_records.exists());
+
+        // No security patch
+        let mut pb = ProtoPersistStorageRecords::new();
+        pb.set_build_fingerprint(
+            "google/raven/raven:Baklava/ZP1A.251212.002/14579831:userdebug/dev-keys".to_string(),
+        );
+        write_pb_to_file(&pb, &aconfigd.persist_storage_records).unwrap();
+
+        assert!(aconfigd.persist_storage_records.exists());
+        aconfigd.check_for_flag_wipe().unwrap();
+        assert!(aconfigd.persist_storage_records.exists());
+
+        // Neither
+        let pb = ProtoPersistStorageRecords::new();
+        write_pb_to_file(&pb, &aconfigd.persist_storage_records).unwrap();
+
+        assert!(aconfigd.persist_storage_records.exists());
+        aconfigd.check_for_flag_wipe().unwrap();
+        assert!(aconfigd.persist_storage_records.exists());
     }
 }

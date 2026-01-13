@@ -15,12 +15,84 @@
  */
 
 use crate::AconfigdError;
+use log::debug;
 use openssl::hash::{Hasher, MessageDigest};
 use std::fs::File;
 use std::io::Read;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+/// Get device security patch date
+pub(crate) fn get_security_patch() -> Result<String, AconfigdError> {
+    let patch_date = rustutils::android::system_properties::read("ro.build.version.security_patch")
+        .map_err(|errmsg| AconfigdError::FailToReadSystemProperty {
+            name: String::from("ro.build.version.security_patch"),
+            errmsg,
+        })?;
+    match patch_date {
+        Some(date) => {
+            debug!("security patch date is: {}", date);
+            Ok(date.clone())
+        }
+        None => {
+            debug!("security patch date is not set");
+            Ok(String::from(""))
+        }
+    }
+}
+
+/// Get device build fingerprint
+pub(crate) fn get_build_fingerprint() -> Result<String, AconfigdError> {
+    let build_fingerprint = rustutils::android::system_properties::read("ro.build.fingerprint")
+        .map_err(|errmsg| AconfigdError::FailToReadBuildFingerPrint { errmsg })?;
+    match build_fingerprint {
+        Some(id) => {
+            debug!("build fingerprint is: {}", id);
+            Ok(id.clone())
+        }
+        None => {
+            debug!("build fingerprint not set");
+            Ok(String::from(""))
+        }
+    }
+}
+
+/// Device build info
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct BuildInfo<'a> {
+    pub branch_code: &'a str,
+    pub build_type: &'a str,
+}
+
+/// Parses a build fingerprint to extract branch code and build type.
+pub(crate) fn parse_fingerprint<'a>(fingerprint: &'a str) -> Option<BuildInfo<'a>> {
+    let mut major_parts = fingerprint.split(':');
+    major_parts.next()?;
+
+    // id block: "13/T1B2.220916.004/9143869"
+    let id_block = major_parts.next()?;
+    let full_build_id = id_block.split('/').nth(1)?;
+    let branch_code = full_build_id.split('.').next()?;
+
+    // type block: "user/release-keys"
+    let type_block = major_parts.next()?;
+    let build_type = type_block.split('/').next()?;
+
+    Some(BuildInfo { branch_code, build_type })
+}
+
+/// Compare the build info of two build
+pub(crate) fn compare_build_info(fingerprint1: &str, fingerprint2: &str) -> bool {
+    let info1 = parse_fingerprint(fingerprint1);
+    let info2 = parse_fingerprint(fingerprint2);
+
+    if let (Some(b1), Some(b2)) = (info1, info2) {
+        b1 == b2
+    } else {
+        false
+    }
+}
 
 /// Set file permission
 pub(crate) fn set_file_permission(file: &Path, mode: u32) -> Result<(), AconfigdError> {
@@ -266,5 +338,73 @@ mod tests {
             digest.expect("Calculating digest"),
             "8352c31d9ff5f446b838139b7f4eb5fed821a1f80d6648ffa6ed7391ecf431f4"
         );
+    }
+
+    #[test]
+    fn test_valid_userdebug_build() {
+        let fingerprint = "google/cheetah/cheetah:13/TD1A.220804.031/8933341:userdebug/dev-keys";
+        let expected = BuildInfo { branch_code: "TD1A", build_type: "userdebug" };
+        assert_eq!(parse_fingerprint(fingerprint), Some(expected));
+    }
+
+    #[test]
+    fn test_malformed_not_enough_colons() {
+        let fingerprint = "google/oriole/oriole:13/T1B2.220916.004/9143869";
+        assert_eq!(parse_fingerprint(fingerprint), None);
+    }
+
+    #[test]
+    fn test_malformed_missing_id_block_parts() {
+        let fingerprint = "google/oriole/oriole:13:user/release-keys";
+        assert_eq!(parse_fingerprint(fingerprint), None);
+    }
+
+    #[test]
+    fn test_malformed_missing_type_block_parts() {
+        let fingerprint = "google/oriole/oriole:13/T1B2.220916.004/9143869:user";
+        // This is valid, as "user" is the first part of split by '/'
+        let expected = BuildInfo { branch_code: "T1B2", build_type: "user" };
+        assert_eq!(parse_fingerprint(fingerprint), Some(expected));
+    }
+
+    #[test]
+    fn test_empty_string() {
+        let fingerprint = "";
+        assert_eq!(parse_fingerprint(fingerprint), None);
+    }
+
+    #[test]
+    fn test_compatible_fingerprints() {
+        let fp1 = "google/oriole/oriole:13/T1B2.220916.004/9143869:user/release-keys";
+        let fp2 = "google/oriole/oriole:13/T1B2.221005.004/9202445:user/release-keys";
+        assert!(compare_build_info(fp1, fp2));
+    }
+
+    #[test]
+    fn test_different_build_type() {
+        let fp1 = "google/oriole/oriole:13/T1B2.220916.004/9143869:user/release-keys";
+        let fp2 = "google/oriole/oriole:13/T1B2.220916.004/9143869:userdebug/dev-keys";
+        assert!(!compare_build_info(fp1, fp2));
+    }
+
+    #[test]
+    fn test_different_branch_code() {
+        let fp1 = "google/oriole/oriole:13/T1B2.220916.004/9143869:user/release-keys";
+        let fp2 = "google/oriole/oriole:13/TP1A.220905.004/9012973:user/release-keys";
+        assert!(!compare_build_info(fp1, fp2));
+    }
+
+    #[test]
+    fn test_one_invalid_fingerprint() {
+        let fp1 = "google/oriole/oriole:13/T1B2.220916.004/9143869:user/release-keys";
+        let fp2 = "invalid";
+        assert!(!compare_build_info(fp1, fp2));
+    }
+
+    #[test]
+    fn test_both_invalid_fingerprints() {
+        let fp1 = "invalid1";
+        let fp2 = "invalid2";
+        assert!(!compare_build_info(fp1, fp2));
     }
 }

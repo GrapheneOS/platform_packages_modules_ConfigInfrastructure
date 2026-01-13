@@ -357,6 +357,8 @@ impl StorageFilesManager {
     /// Write persist storage records to file
     pub(crate) fn write_persist_storage_records_to_file(
         &self,
+        build_fingerprint: &str,
+        security_patch: &str,
         file: &Path,
     ) -> Result<(), AconfigdError> {
         debug!("writing updated storage records {}", file.display().to_string());
@@ -377,6 +379,8 @@ impl StorageFilesManager {
                 entry
             })
             .collect();
+        pb.set_build_fingerprint(String::from(build_fingerprint));
+        pb.set_security_patch(String::from(security_patch));
         write_pb_to_file(&pb, file)
     }
 
@@ -1081,7 +1085,9 @@ mod tests {
         init_storage(&container, &mut manager);
 
         let pb_file = root_dir.tmp_dir.path().join("records.pb");
-        manager.write_persist_storage_records_to_file(&pb_file).unwrap();
+        manager
+            .write_persist_storage_records_to_file("some.build.fingerprint", "2025-01-01", &pb_file)
+            .unwrap();
 
         let pb = read_pb_from_file::<ProtoPersistStorageRecords>(&pb_file).unwrap();
         assert_eq!(pb.records.len(), 1);
@@ -1104,6 +1110,8 @@ mod tests {
         .unwrap();
         entry.set_digest(digest);
         assert_eq!(pb.records[0], entry);
+        assert_eq!(pb.build_fingerprint(), String::from("some.build.fingerprint"));
+        assert_eq!(pb.security_patch(), String::from("2025-01-01"));
     }
 
     #[test]
