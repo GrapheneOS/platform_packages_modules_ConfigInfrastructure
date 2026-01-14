@@ -16,8 +16,8 @@
 
 use crate::storage_files_manager::StorageFilesManager;
 use crate::utils::{
-    compare_build_info, get_build_fingerprint, get_security_patch, read_pb_from_file, remove_file,
-    write_pb_to_file,
+    get_build_fingerprint, get_security_patch, has_build_changed_or_regressed, read_pb_from_file,
+    remove_file, write_pb_to_file,
 };
 use crate::AconfigdError;
 use aconfigd_protos::{
@@ -90,7 +90,7 @@ impl Aconfigd {
         let pb = read_pb_from_file::<ProtoPersistStorageRecords>(&self.persist_storage_records)?;
 
         let fingerprint_change = pb.has_build_fingerprint()
-            && !compare_build_info(pb.build_fingerprint(), &self.build_fingerprint);
+            && has_build_changed_or_regressed(pb.build_fingerprint(), &self.build_fingerprint);
         if fingerprint_change {
             debug!(
                 "detecting build fingerprint changes from {} to {}",
@@ -1295,6 +1295,26 @@ mod tests {
     }
 
     #[test]
+    fn test_check_for_flag_wipe_on_build_version_regression() {
+        let root_dir = StorageRootDirMock::new();
+        let mut aconfigd = create_mock_aconfigd(&root_dir);
+        aconfigd.build_fingerprint =
+            "google/raven/raven:Baklava/ZP1A.251212.001/14579831:userdebug/dev-keys".to_string();
+        aconfigd.security_patch = "2025-01-05".to_string();
+
+        let mut pb = ProtoPersistStorageRecords::new();
+        pb.set_build_fingerprint(
+            "google/raven/raven:Baklava/ZP1A.251212.002/14579831:userdebug/dev-keys".to_string(),
+        );
+        pb.set_security_patch("2025-01-05".to_string());
+        write_pb_to_file(&pb, &aconfigd.persist_storage_records).unwrap();
+
+        assert!(aconfigd.persist_storage_records.exists());
+        aconfigd.check_for_flag_wipe().unwrap();
+        assert!(!aconfigd.persist_storage_records.exists());
+    }
+
+    #[test]
     fn test_check_for_flag_wipe_on_security_patch_downgrade() {
         let root_dir = StorageRootDirMock::new();
         let mut aconfigd = create_mock_aconfigd(&root_dir);
@@ -1369,6 +1389,26 @@ mod tests {
 
         // Neither
         let pb = ProtoPersistStorageRecords::new();
+        write_pb_to_file(&pb, &aconfigd.persist_storage_records).unwrap();
+
+        assert!(aconfigd.persist_storage_records.exists());
+        aconfigd.check_for_flag_wipe().unwrap();
+        assert!(aconfigd.persist_storage_records.exists());
+    }
+
+    #[test]
+    fn test_check_for_flag_wipe_no_wipe_on_build_version_increase() {
+        let root_dir = StorageRootDirMock::new();
+        let mut aconfigd = create_mock_aconfigd(&root_dir);
+        aconfigd.build_fingerprint =
+            "google/raven/raven:Baklava/ZP1A.251212.002/14579831:userdebug/dev-keys".to_string();
+        aconfigd.security_patch = "2025-01-05".to_string();
+
+        let mut pb = ProtoPersistStorageRecords::new();
+        pb.set_build_fingerprint(
+            "google/raven/raven:Baklava/ZP1A.251212.001/14579831:userdebug/dev-keys".to_string(),
+        );
+        pb.set_security_patch("2025-01-05".to_string());
         write_pb_to_file(&pb, &aconfigd.persist_storage_records).unwrap();
 
         assert!(aconfigd.persist_storage_records.exists());

@@ -63,6 +63,7 @@ pub(crate) fn get_build_fingerprint() -> Result<String, AconfigdError> {
 pub(crate) struct BuildInfo<'a> {
     pub branch_code: &'a str,
     pub build_type: &'a str,
+    pub build_version: &'a str,
 }
 
 /// Parses a build fingerprint to extract branch code and build type.
@@ -73,24 +74,30 @@ pub(crate) fn parse_fingerprint<'a>(fingerprint: &'a str) -> Option<BuildInfo<'a
     // id block: "13/T1B2.220916.004/9143869"
     let id_block = major_parts.next()?;
     let full_build_id = id_block.split('/').nth(1)?;
-    let branch_code = full_build_id.split('.').next()?;
+    let mut build_id_parts = full_build_id.splitn(2, '.');
+    let branch_code = build_id_parts.next()?;
+    let build_version = build_id_parts.next()?;
 
     // type block: "user/release-keys"
     let type_block = major_parts.next()?;
     let build_type = type_block.split('/').next()?;
 
-    Some(BuildInfo { branch_code, build_type })
+    Some(BuildInfo { branch_code, build_type, build_version })
 }
 
-/// Compare the build info of two build
-pub(crate) fn compare_build_info(fingerprint1: &str, fingerprint2: &str) -> bool {
+/// Return true if build has changed (branch code or build type) or regressed (build version).
+/// Also returns true if fingerprints are different and cannot be parsed.
+pub(crate) fn has_build_changed_or_regressed(fingerprint1: &str, fingerprint2: &str) -> bool {
     let info1 = parse_fingerprint(fingerprint1);
     let info2 = parse_fingerprint(fingerprint2);
 
-    if let (Some(b1), Some(b2)) = (info1, info2) {
-        b1 == b2
-    } else {
-        false
+    match (info1, info2) {
+        (Some(b1), Some(b2)) => {
+            b1.branch_code != b2.branch_code
+                || b1.build_type != b2.build_type
+                || b2.build_version < b1.build_version
+        }
+        _ => fingerprint1 != fingerprint2,
     }
 }
 
@@ -343,7 +350,8 @@ mod tests {
     #[test]
     fn test_valid_userdebug_build() {
         let fingerprint = "google/cheetah/cheetah:13/TD1A.220804.031/8933341:userdebug/dev-keys";
-        let expected = BuildInfo { branch_code: "TD1A", build_type: "userdebug" };
+        let expected =
+            BuildInfo { branch_code: "TD1A", build_version: "220804.031", build_type: "userdebug" };
         assert_eq!(parse_fingerprint(fingerprint), Some(expected));
     }
 
@@ -363,7 +371,8 @@ mod tests {
     fn test_malformed_missing_type_block_parts() {
         let fingerprint = "google/oriole/oriole:13/T1B2.220916.004/9143869:user";
         // This is valid, as "user" is the first part of split by '/'
-        let expected = BuildInfo { branch_code: "T1B2", build_type: "user" };
+        let expected =
+            BuildInfo { branch_code: "T1B2", build_version: "220916.004", build_type: "user" };
         assert_eq!(parse_fingerprint(fingerprint), Some(expected));
     }
 
@@ -374,37 +383,57 @@ mod tests {
     }
 
     #[test]
-    fn test_compatible_fingerprints() {
+    fn test_same_fingerprint() {
+        let fp1 = "google/oriole/oriole:13/T1B2.220916.004/9143869:user/release-keys";
+        assert!(!has_build_changed_or_regressed(fp1, fp1));
+    }
+
+    #[test]
+    fn test_build_version_upgraded() {
         let fp1 = "google/oriole/oriole:13/T1B2.220916.004/9143869:user/release-keys";
         let fp2 = "google/oriole/oriole:13/T1B2.221005.004/9202445:user/release-keys";
-        assert!(compare_build_info(fp1, fp2));
+        assert!(!has_build_changed_or_regressed(fp1, fp2));
+    }
+
+    #[test]
+    fn test_build_version_regressed() {
+        let fp1 = "google/oriole/oriole:13/T1B2.221005.004/9202445:user/release-keys";
+        let fp2 = "google/oriole/oriole:13/T1B2.220916.004/9143869:user/release-keys";
+        assert!(has_build_changed_or_regressed(fp1, fp2));
     }
 
     #[test]
     fn test_different_build_type() {
         let fp1 = "google/oriole/oriole:13/T1B2.220916.004/9143869:user/release-keys";
         let fp2 = "google/oriole/oriole:13/T1B2.220916.004/9143869:userdebug/dev-keys";
-        assert!(!compare_build_info(fp1, fp2));
+        assert!(has_build_changed_or_regressed(fp1, fp2));
     }
 
     #[test]
     fn test_different_branch_code() {
         let fp1 = "google/oriole/oriole:13/T1B2.220916.004/9143869:user/release-keys";
         let fp2 = "google/oriole/oriole:13/TP1A.220905.004/9012973:user/release-keys";
-        assert!(!compare_build_info(fp1, fp2));
+        assert!(has_build_changed_or_regressed(fp1, fp2));
     }
 
     #[test]
     fn test_one_invalid_fingerprint() {
         let fp1 = "google/oriole/oriole:13/T1B2.220916.004/9143869:user/release-keys";
         let fp2 = "invalid";
-        assert!(!compare_build_info(fp1, fp2));
+        assert!(has_build_changed_or_regressed(fp1, fp2));
     }
 
     #[test]
-    fn test_both_invalid_fingerprints() {
+    fn test_both_invalid_fingerprints_different() {
         let fp1 = "invalid1";
         let fp2 = "invalid2";
-        assert!(!compare_build_info(fp1, fp2));
+        assert!(has_build_changed_or_regressed(fp1, fp2));
+    }
+
+    #[test]
+    fn test_both_invalid_fingerprints_same() {
+        let fp1 = "invalid";
+        let fp2 = "invalid";
+        assert!(!has_build_changed_or_regressed(fp1, fp2));
     }
 }
