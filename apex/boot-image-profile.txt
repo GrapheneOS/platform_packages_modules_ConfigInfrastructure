@@ -1,0 +1,60 @@
+#
+# Copyright (C) 2026 The Android Open Source Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+Landroid/net/Uri$HierarchicalUri;
+Landroid/net/Uri$PathSegments;
+Landroid/os/HandlerExecutor;
+Landroid/os/flagging/AconfigPackage;
+Landroid/os/flagging/AconfigPackageInternal;
+Landroid/os/flagging/AconfigStorageReadException;
+Landroid/os/flagging/ConfigInfrastructureFrameworkInitializer$$ExternalSyntheticLambda0;
+Landroid/os/flagging/ConfigInfrastructureFrameworkInitializer;
+Landroid/os/flagging/FlagManager;
+Landroid/provider/DeviceConfig$$ExternalSyntheticLambda0;
+Landroid/provider/DeviceConfig$$ExternalSyntheticLambda1;
+Landroid/provider/DeviceConfig$1;
+Landroid/provider/DeviceConfig$BadConfigException;
+Landroid/provider/DeviceConfig$MonitorCallback;
+Landroid/provider/DeviceConfig$OnPropertiesChangedListener;
+Landroid/provider/DeviceConfig$Properties$Builder;
+Landroid/provider/DeviceConfig$Properties;
+Landroid/provider/DeviceConfig;
+Landroid/provider/DeviceConfigDataStore;
+Landroid/provider/SettingsConfigDataStore;
+Landroid/provider/WritableFlags;
+Landroid/provider/WritableNamespaces;
+Landroid/provider/internal/aconfig/storage/AconfigStorageException;
+Landroid/provider/internal/aconfig/storage/ByteBufferReader;
+Landroid/provider/internal/aconfig/storage/FileType;
+Landroid/provider/internal/aconfig/storage/FlagTable$Header;
+Landroid/provider/internal/aconfig/storage/FlagTable$Node;
+Landroid/provider/internal/aconfig/storage/FlagTable;
+Landroid/provider/internal/aconfig/storage/FlagType;
+Landroid/provider/internal/aconfig/storage/FlagValueList$Header;
+Landroid/provider/internal/aconfig/storage/FlagValueList;
+Landroid/provider/internal/aconfig/storage/PackageTable$Header;
+Landroid/provider/internal/aconfig/storage/PackageTable$Node;
+Landroid/provider/internal/aconfig/storage/PackageTable;
+Landroid/provider/internal/aconfig/storage/SipHasher13$State;
+Landroid/provider/internal/aconfig/storage/SipHasher13;
+Landroid/provider/internal/aconfig/storage/TableUtils$StorageFilesBundle;
+Landroid/provider/internal/aconfig/storage/TableUtils;
+Landroid/provider/internal/modules/utils/build/SdkLevel;
+Landroid/provider/internal/modules/utils/ravenwood/RavenwoodHelper;
+Landroid/provider/x/android/provider/flags/FeatureFlags;
+Landroid/provider/x/android/provider/flags/FeatureFlagsImpl;
+Landroid/provider/x/android/provider/flags/Flags;
+[Landroid/provider/internal/aconfig/storage/FileType;
+[Landroid/provider/internal/aconfig/storage/FlagType;
