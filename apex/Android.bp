@@ -21,6 +21,9 @@ bootclasspath_fragment {
     name: "com.android.configinfrastructure-bootclasspath-fragment",
     contents: ["framework-configinfrastructure"],
     apex_available: ["com.android.configinfrastructure"],
+    dex_preopt: {
+        profile: "packages/modules/ConfigInfrastructure/apex/boot-image-profile.txt",
+    },
     hidden_api: {
 
         // The following packages contain classes from other modules on the
