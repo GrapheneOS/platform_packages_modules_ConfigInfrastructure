@@ -579,6 +579,11 @@ impl Aconfigd {
 
         Ok(())
     }
+
+    /// Update bootloader with special flags
+    pub fn update_bootloader(&mut self) -> Result<(), AconfigdError> {
+        self.storage_manager.update_bootloader()
+    }
 }
 
 #[cfg(test)]

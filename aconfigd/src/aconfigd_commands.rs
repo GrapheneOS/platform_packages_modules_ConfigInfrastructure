@@ -68,6 +68,7 @@ pub fn init() -> Result<()> {
     aconfigd.initialize_from_storage_record()?;
     aconfigd.initialize_mainline_storage()?;
     aconfigd.remove_inactive_boot_files()?;
+    aconfigd.update_bootloader()?;
     Ok(())
 }
 

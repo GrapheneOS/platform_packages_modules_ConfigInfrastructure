@@ -162,4 +162,10 @@ pub enum AconfigdError {
         name: String,
         errmsg: rustutils::android::system_properties::PropertyWatcherError,
     },
+
+    #[error("fail to write system property {:?}: {:?}", .name,.errmsg)]
+    FailToWriteSystemProperty {
+        name: String,
+        errmsg: rustutils::android::system_properties::PropertyWatcherError,
+    },
 }
