@@ -415,6 +415,7 @@ final class WritableFlags {
                 "notification_assistant/generate_actions",
                 "notification_assistant/generate_replies",
                 "ondeviceintelligence/service_enabled",
+                "ondevicesafety/service_enabled",
                 "oslo/mcc_whitelist",
                 "oslo/media_app_whitelist",
                 "ota/enable_server_based_ror",
