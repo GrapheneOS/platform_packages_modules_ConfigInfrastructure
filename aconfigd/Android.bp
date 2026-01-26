@@ -101,4 +101,5 @@ rust_aconfig_library {
         "//apex_available:platform",
     ],
     min_sdk_version: "34",
+    host_supported: true,
 }

@@ -22,6 +22,9 @@ rust_defaults {
         "libnix",
         "libprotobuf",
         "libregex",
+        "liblog_rust",
+        "liblogger",
+        "libconfiginfra_framework_flags_rust",
     ],
 }
 
