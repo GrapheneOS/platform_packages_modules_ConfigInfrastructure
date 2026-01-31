@@ -18,6 +18,7 @@
 
 use anyhow::{anyhow, ensure, Result};
 use clap::Parser;
+use log::debug;
 use std::collections::{HashMap, HashSet};
 
 mod aconfig_storage_source;
@@ -497,6 +498,15 @@ fn list<A: FlagSource, B: FlagSource>(
 
 fn main() -> Result<()> {
     ensure!(nix::unistd::Uid::current().is_root(), "must be root");
+
+    if configinfra_framework_flags_rust::aflags_debug_improvements() {
+        logger::init(
+            logger::Config::default()
+                .with_tag_on_device("aflags")
+                .with_max_level(log::LevelFilter::Trace),
+        );
+        debug!("starting aflags commands.");
+    }
 
     let flag_sources_provider = FlagSourcesProvider {
         aconfigd_source: AconfigStorageSource {},

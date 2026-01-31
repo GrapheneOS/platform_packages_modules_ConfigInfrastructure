@@ -83,3 +83,10 @@ flag {
   is_fixed_read_only: true
   is_exported: true
 }
+
+flag {
+  name: "aflags_debug_improvements"
+  namespace: "core_experiments_team_internal"
+  description: "Flag to enable debuggability improvements for aflags"
+  bug: "417540341"
+}
