@@ -1,4 +1,5 @@
-use crate::{Flag, FlagPermission, FlagStorageBackend, FlagValue, ValuePickedFrom};
+use crate::{flag_value_from_str, VALUE_DISABLED, VALUE_ENABLED};
+use crate::{Flag, FlagPermission, FlagStorageBackend, ValuePickedFrom};
 use aconfig_protos::ProtoFlagPermission as ProtoPermission;
 use aconfig_protos::ProtoFlagState as ProtoState;
 use aconfig_protos::ProtoFlagStorageBackend;
@@ -26,33 +27,36 @@ fn convert_parsed_flag(path: &Path, flag: &ProtoParsedFlag) -> Flag {
     let name = flag.name().to_string();
 
     let value = match flag.state() {
-        ProtoState::ENABLED => FlagValue::Enabled,
-        ProtoState::DISABLED => FlagValue::Disabled,
+        ProtoState::ENABLED => VALUE_ENABLED.to_string(),
+        ProtoState::DISABLED => VALUE_DISABLED.to_string(),
     };
 
     let permission = match flag.permission() {
-        ProtoPermission::READ_ONLY => FlagPermission::ReadOnly,
-        ProtoPermission::READ_WRITE => FlagPermission::ReadWrite,
+        ProtoPermission::READ_ONLY => FlagPermission::FLAG_PERMISSION_READ_ONLY,
+        ProtoPermission::READ_WRITE => FlagPermission::FLAG_PERMISSION_READ_WRITE,
     };
 
     let storage_backend = match flag.metadata.storage() {
-        ProtoFlagStorageBackend::NONE => FlagStorageBackend::None,
-        ProtoFlagStorageBackend::ACONFIGD => FlagStorageBackend::Aconfigd,
-        ProtoFlagStorageBackend::DEVICE_CONFIG => FlagStorageBackend::DeviceConfig,
-        ProtoFlagStorageBackend::UNSPECIFIED => FlagStorageBackend::Unspecified,
+        ProtoFlagStorageBackend::NONE => FlagStorageBackend::FLAG_STORAGE_BACKEND_NONE,
+        ProtoFlagStorageBackend::ACONFIGD => FlagStorageBackend::FLAG_STORAGE_BACKEND_ACONFIGD,
+        ProtoFlagStorageBackend::DEVICE_CONFIG => {
+            FlagStorageBackend::FLAG_STORAGE_BACKEND_DEVICE_CONFIG
+        }
+        ProtoFlagStorageBackend::UNSPECIFIED => {
+            FlagStorageBackend::FLAG_STORAGE_BACKEND_UNSPECIFIED
+        }
     };
 
-    Flag {
-        namespace,
-        package,
-        name,
-        container: infer_container(path),
-        value,
-        staged_value: None,
-        permission,
-        value_picked_from: ValuePickedFrom::Default,
-        storage_backend,
-    }
+    let mut f = Flag::new();
+    f.set_namespace(namespace);
+    f.set_package(package);
+    f.set_name(name);
+    f.set_container(infer_container(path));
+    f.set_value(flag_value_from_str(&value));
+    f.set_permission(permission);
+    f.set_value_picked_from(ValuePickedFrom::VALUE_PICKED_FROM_DEFAULT);
+    f.set_storage_backend(storage_backend);
+    f
 }
 
 pub(crate) fn load() -> Result<Vec<Flag>> {

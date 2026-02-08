@@ -10,6 +10,7 @@ rust_defaults {
     lints: "android",
     srcs: ["src/main.rs"],
     rustlibs: [
+        "libaflags_protos_rust",
         "libaconfig_device_paths",
         "libaconfig_flags",
         "libaconfig_protos",

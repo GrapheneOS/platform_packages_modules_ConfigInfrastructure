@@ -16,6 +16,17 @@
 
 //! `aflags` is a device binary to read and write aconfig flags.
 
+/// The canonical string representation of an enabled boolean flag.
+pub const VALUE_ENABLED: &str = "enabled";
+/// The canonical string representation of a disabled boolean flag.
+pub const VALUE_DISABLED: &str = "disabled";
+
+pub use aflags_protos::ProtoFlag as Flag;
+pub use aflags_protos::ProtoFlagList;
+pub use aflags_protos::ProtoFlagPermission as FlagPermission;
+pub use aflags_protos::ProtoFlagStorageBackend as FlagStorageBackend;
+pub use aflags_protos::ProtoValuePickedFrom as ValuePickedFrom;
+
 use anyhow::{anyhow, ensure, Result};
 use clap::Parser;
 use log::debug;
@@ -30,109 +41,49 @@ mod load_protos;
 
 use mainline_beta_namespace_config::{get_mainline_beta_namespace_map, MainlineBetaNamespace};
 
-#[derive(Clone, PartialEq, Debug)]
-enum FlagPermission {
-    ReadOnly,
-    ReadWrite,
-}
-
-impl std::fmt::Display for FlagPermission {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match &self {
-                Self::ReadOnly => "read-only",
-                Self::ReadWrite => "read-write",
-            }
-        )
+/// Normalizes a flag value for display in the CLI.
+///
+/// Maps "true" or "enabled" to "enabled", and "false" or "disabled" to "disabled".
+/// Other values are returned as-is.
+///
+/// b/394883198 will add support for string-type flags.
+pub fn flag_value_from_str(value: &str) -> String {
+    match value {
+        "true" | VALUE_ENABLED => VALUE_ENABLED.to_string(),
+        "false" | VALUE_DISABLED => VALUE_DISABLED.to_string(),
+        _ => value.to_string(),
     }
 }
 
-#[derive(Clone, Debug)]
-enum ValuePickedFrom {
-    Default,
-    Server,
-    Local,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-enum FlagStorageBackend {
-    Unspecified,
-    None,
-    Aconfigd,
-    DeviceConfig,
-}
-
-impl std::fmt::Display for ValuePickedFrom {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match &self {
-                Self::Default => "default",
-                Self::Server => "server",
-                Self::Local => "local",
-            }
-        )
+fn flag_permission_to_string(permission: FlagPermission) -> String {
+    match permission {
+        FlagPermission::FLAG_PERMISSION_READ_ONLY => "read-only".to_string(),
+        FlagPermission::FLAG_PERMISSION_READ_WRITE => "read-write".to_string(),
+        FlagPermission::FLAG_PERMISSION_UNSPECIFIED => "unspecified".to_string(),
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum FlagValue {
-    Enabled,
-    Disabled,
+fn value_picked_from_to_string(value_picked_from: ValuePickedFrom) -> String {
+    match value_picked_from {
+        ValuePickedFrom::VALUE_PICKED_FROM_DEFAULT => "default".to_string(),
+        ValuePickedFrom::VALUE_PICKED_FROM_SERVER => "server".to_string(),
+        ValuePickedFrom::VALUE_PICKED_FROM_LOCAL => "local".to_string(),
+        ValuePickedFrom::VALUE_PICKED_FROM_UNSPECIFIED => "unspecified".to_string(),
+    }
 }
 
-impl TryFrom<&str> for FlagValue {
-    type Error = anyhow::Error;
+fn flag_qualified_name(flag: &Flag) -> String {
+    format!("{}.{}", flag.package(), flag.name())
+}
 
-    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
-        match value {
-            "true" | "enabled" => Ok(Self::Enabled),
-            "false" | "disabled" => Ok(Self::Disabled),
-            _ => Err(anyhow!("cannot convert string '{}' to FlagValue", value)),
+fn flag_display_staged_value(flag: &Flag) -> String {
+    match (flag.permission(), flag.staged_value.as_deref()) {
+        (FlagPermission::FLAG_PERMISSION_READ_ONLY, _) => "-".to_string(),
+        (FlagPermission::FLAG_PERMISSION_READ_WRITE, None) => "-".to_string(),
+        (FlagPermission::FLAG_PERMISSION_READ_WRITE, Some(v)) => {
+            format!("(->{v})")
         }
-    }
-}
-
-impl std::fmt::Display for FlagValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match &self {
-                Self::Enabled => "enabled",
-                Self::Disabled => "disabled",
-            }
-        )
-    }
-}
-
-#[derive(Clone, Debug)]
-struct Flag {
-    namespace: String,
-    name: String,
-    package: String,
-    container: String,
-    value: FlagValue,
-    staged_value: Option<FlagValue>,
-    permission: FlagPermission,
-    value_picked_from: ValuePickedFrom,
-    storage_backend: FlagStorageBackend,
-}
-
-impl Flag {
-    fn qualified_name(&self) -> String {
-        format!("{}.{}", self.package, self.name)
-    }
-
-    fn display_staged_value(&self) -> String {
-        match (&self.permission, self.staged_value) {
-            (FlagPermission::ReadOnly, _) => "-".to_string(),
-            (FlagPermission::ReadWrite, None) => "-".to_string(),
-            (FlagPermission::ReadWrite, Some(v)) => format!("(->{v})"),
-        }
+        (FlagPermission::FLAG_PERMISSION_UNSPECIFIED, _) => "-".to_string(),
     }
 }
 
@@ -252,7 +203,7 @@ impl Filter {
         flags
             .iter()
             .filter(|flag| match &self.container {
-                Some(c) => flag.container == *c,
+                Some(c) => flag.container() == c,
                 None => true,
             })
             .cloned()
@@ -261,22 +212,22 @@ impl Filter {
 }
 
 fn format_flag_row(flag: &Flag, info: &PaddingInfo) -> String {
-    let full_name = flag.qualified_name();
+    let full_name = flag_qualified_name(flag);
     let p0 = info.longest_flag_col + 1;
 
-    let val = flag.value.to_string();
+    let val = flag.value();
     let p1 = info.longest_val_col + 1;
 
-    let staged_val = flag.display_staged_value();
+    let staged_val = flag_display_staged_value(flag);
     let p2 = info.longest_staged_val_col + 1;
 
-    let value_picked_from = flag.value_picked_from.to_string();
+    let value_picked_from = value_picked_from_to_string(flag.value_picked_from());
     let p3 = info.longest_value_picked_from_col + 1;
 
-    let perm = flag.permission.to_string();
+    let perm = flag_permission_to_string(flag.permission());
     let p4 = info.longest_permission_col + 1;
 
-    let container = &flag.container;
+    let container = flag.container();
 
     format!(
         "{full_name:p0$}{val:p1$}{staged_val:p2$}{value_picked_from:p3$}{perm:p4$}{container}\n"
@@ -288,7 +239,7 @@ fn get_flag<A: FlagSource, B: FlagSource>(
     provider: &FlagSourcesProvider<A, B>,
 ) -> Result<Flag> {
     let flags_binding = provider.aconfigd_source.list_flags()?;
-    let flag = flags_binding.iter().find(|f| f.qualified_name() == qualified_name).ok_or(
+    let flag = flags_binding.iter().find(|f| flag_qualified_name(f) == qualified_name).ok_or(
         anyhow!("no aconfig flag '{qualified_name}'. Does the flag have an .aconfig definition?"),
     )?;
     Ok(flag.clone())
@@ -301,23 +252,23 @@ fn set_flag<A: FlagSource, B: FlagSource>(
     provider: &FlagSourcesProvider<A, B>,
 ) -> Result<()> {
     ensure!(
-        flag.permission == FlagPermission::ReadWrite,
+        flag.permission() == FlagPermission::FLAG_PERMISSION_READ_WRITE,
         format!(
             "could not write flag '{}', it is read-only for the current release configuration.",
-            flag.qualified_name()
+            flag_qualified_name(flag)
         )
     );
 
     provider.aconfigd_source.override_flag(
-        &flag.namespace,
-        &flag.qualified_name(),
+        flag.namespace(),
+        &flag_qualified_name(flag),
         value,
         immediate,
     )?;
-    if flag.storage_backend == FlagStorageBackend::DeviceConfig {
+    if flag.storage_backend() == FlagStorageBackend::FLAG_STORAGE_BACKEND_DEVICE_CONFIG {
         provider.device_config_source.override_flag(
-            &flag.namespace,
-            &flag.qualified_name(),
+            flag.namespace(),
+            &flag_qualified_name(flag),
             value,
             immediate,
         )?;
@@ -330,11 +281,11 @@ fn unset<A: FlagSource, B: FlagSource>(
     immediate: bool,
     provider: &FlagSourcesProvider<A, B>,
 ) -> Result<()> {
-    provider.aconfigd_source.unset_flag(&flag.namespace, &flag.qualified_name(), immediate)?;
-    if flag.storage_backend == FlagStorageBackend::DeviceConfig {
+    provider.aconfigd_source.unset_flag(flag.namespace(), &flag_qualified_name(flag), immediate)?;
+    if flag.storage_backend() == FlagStorageBackend::FLAG_STORAGE_BACKEND_DEVICE_CONFIG {
         provider.device_config_source.unset_flag(
-            &flag.namespace,
-            &flag.qualified_name(),
+            flag.namespace(),
+            &flag_qualified_name(flag),
             immediate,
         )?;
     }
@@ -352,14 +303,12 @@ fn check_container(container: &Option<String>) -> Result<()> {
     Ok(())
 }
 
-fn merge_mainline_beta_flag(aconfigd_flag: Flag, device_config_flag: Flag) -> Flag {
-    Flag {
-        value: device_config_flag.value,
-        storage_backend: device_config_flag.storage_backend,
-        value_picked_from: device_config_flag.value_picked_from,
-        permission: device_config_flag.permission,
-        ..aconfigd_flag
-    }
+fn merge_mainline_beta_flag(mut aconfigd_flag: Flag, device_config_flag: Flag) -> Flag {
+    aconfigd_flag.set_value(device_config_flag.value().to_string());
+    aconfigd_flag.set_storage_backend(device_config_flag.storage_backend());
+    aconfigd_flag.set_value_picked_from(device_config_flag.value_picked_from());
+    aconfigd_flag.set_permission(device_config_flag.permission());
+    aconfigd_flag
 }
 
 fn resolve_flag(
@@ -382,7 +331,7 @@ fn resolve_flag(
         // If we have flags from both backends with a mainline beta namespace, check the container
         // to tell whether the flag is mainline beta or not:
         (Some(aconfigd_flag), Some(device_config_flag), Some(mainline_beta_namespace)) => {
-            if aconfigd_flag.container == mainline_beta_namespace.container {
+            if aconfigd_flag.container() == mainline_beta_namespace.container {
                 // Flag *is* in the mainline container, so it's mainline beta, so device_config is
                 // the source of truth. Use the value from device_config but copy some metadata from
                 // the aconfigd flag.
@@ -402,11 +351,11 @@ fn resolve_flags(
     mainline_beta_namespaces: HashMap<&str, &MainlineBetaNamespace>,
 ) -> Vec<Flag> {
     let mut aconfigd_flag_map =
-        aconfigd_flags.into_iter().map(|f| (f.qualified_name(), f)).collect::<HashMap<_, _>>();
+        aconfigd_flags.into_iter().map(|f| (flag_qualified_name(&f), f)).collect::<HashMap<_, _>>();
 
     let mut device_config_flag_map = device_config_flags
         .into_iter()
-        .map(|f| (f.qualified_name(), f))
+        .map(|f| (flag_qualified_name(&f), f))
         .collect::<HashMap<String, Flag>>();
 
     let mut qualified_names = HashSet::<String>::new();
@@ -424,8 +373,8 @@ fn resolve_flags(
             let device_config_flag = device_config_flag_map.remove(&q);
             let mainline_beta_namespace = mainline_beta_namespaces
                 .get(match (&aconfigd_flag, &device_config_flag) {
-                    (Some(f), _) => f.namespace.as_str(),
-                    (_, Some(f)) => f.namespace.as_str(),
+                    (Some(f), _) => f.namespace(),
+                    (_, Some(f)) => f.namespace(),
                     (None, None) => unreachable!(),
                 })
                 .copied();
@@ -469,21 +418,21 @@ fn list<A: FlagSource, B: FlagSource>(
     let flags = list_flags(container, provider)?;
 
     let padding_info = PaddingInfo {
-        longest_flag_col: flags.iter().map(|f| f.qualified_name().len()).max().unwrap_or(0),
-        longest_val_col: flags.iter().map(|f| f.value.to_string().len()).max().unwrap_or(0),
+        longest_flag_col: flags.iter().map(|f| flag_qualified_name(f).len()).max().unwrap_or(0),
+        longest_val_col: flags.iter().map(|f| f.value().len()).max().unwrap_or(0),
         longest_staged_val_col: flags
             .iter()
-            .map(|f| f.display_staged_value().len())
+            .map(|f| flag_display_staged_value(f).len())
             .max()
             .unwrap_or(0),
         longest_value_picked_from_col: flags
             .iter()
-            .map(|f| f.value_picked_from.to_string().len())
+            .map(|f| value_picked_from_to_string(f.value_picked_from()).len())
             .max()
             .unwrap_or(0),
         longest_permission_col: flags
             .iter()
-            .map(|f| f.permission.to_string().len())
+            .map(|f| flag_permission_to_string(f.permission()).len())
             .max()
             .unwrap_or(0),
     };
@@ -540,19 +489,14 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-impl From<bool> for FlagValue {
-    fn from(value: bool) -> Self {
-        if value {
-            FlagValue::Enabled
-        } else {
-            FlagValue::Disabled
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn flag_value_from_bool(value: bool) -> String {
+        if value { VALUE_ENABLED } else { VALUE_DISABLED }.to_string()
+    }
+
     use crate::device_config_source::execute_device_config_command;
     use crate::device_config_source::parse_device_config_output;
     use rand::Rng;
@@ -568,61 +512,60 @@ mod tests {
     #[allow(dead_code)]
     impl TestFlagBuilder {
         fn new() -> TestFlagBuilder {
-            TestFlagBuilder(Flag {
-                namespace: "test_namespace".to_string(),
-                name: "test_flag".to_string(),
-                package: "test_package".to_string(),
-                container: "test_container".to_string(),
-                value: FlagValue::Disabled,
-                staged_value: None,
-                permission: FlagPermission::ReadOnly,
-                value_picked_from: ValuePickedFrom::Default,
-                storage_backend: FlagStorageBackend::Unspecified,
-            })
+            let mut f = Flag::new();
+            f.set_namespace("test_namespace".to_string());
+            f.set_name("test_flag".to_string());
+            f.set_package("test_package".to_string());
+            f.set_container("test_container".to_string());
+            f.set_value(VALUE_DISABLED.to_string());
+            f.set_permission(FlagPermission::FLAG_PERMISSION_READ_ONLY);
+            f.set_value_picked_from(ValuePickedFrom::VALUE_PICKED_FROM_DEFAULT);
+            f.set_storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_UNSPECIFIED);
+            TestFlagBuilder(f)
         }
 
         fn namespace(mut self, namespace: &str) -> Self {
-            self.0.namespace = namespace.to_string();
+            self.0.set_namespace(namespace.to_string());
             self
         }
 
         fn name(mut self, name: &str) -> Self {
-            self.0.name = name.to_string();
+            self.0.set_name(name.to_string());
             self
         }
 
         fn value(mut self, value: bool) -> Self {
-            self.0.value = FlagValue::from(value);
+            self.0.set_value(flag_value_from_bool(value));
             self
         }
 
         fn package(mut self, package: &str) -> Self {
-            self.0.package = package.to_string();
+            self.0.set_package(package.to_string());
             self
         }
 
         fn container(mut self, container: &str) -> Self {
-            self.0.container = container.to_string();
+            self.0.set_container(container.to_string());
             self
         }
 
         fn staged_value(mut self, staged_value: Option<bool>) -> Self {
-            self.0.staged_value = staged_value.map(FlagValue::from);
+            self.0.staged_value = staged_value.map(flag_value_from_bool);
             self
         }
 
         fn permission(mut self, permission: FlagPermission) -> Self {
-            self.0.permission = permission;
+            self.0.set_permission(permission);
             self
         }
 
         fn value_picked_from(mut self, value_picked_from: ValuePickedFrom) -> Self {
-            self.0.value_picked_from = value_picked_from;
+            self.0.set_value_picked_from(value_picked_from);
             self
         }
 
         fn storage_backend(mut self, storage_backend: FlagStorageBackend) -> Self {
-            self.0.storage_backend = storage_backend;
+            self.0.set_storage_backend(storage_backend);
             self
         }
 
@@ -634,39 +577,36 @@ mod tests {
     #[test]
     fn test_filter_container() {
         let flags = vec![
-            Flag {
-                namespace: "namespace".to_string(),
-                name: "test1".to_string(),
-                package: "package".to_string(),
-                value: FlagValue::Disabled,
-                staged_value: None,
-                permission: FlagPermission::ReadWrite,
-                value_picked_from: ValuePickedFrom::Default,
-                container: "system".to_string(),
-                storage_backend: FlagStorageBackend::Aconfigd,
-            },
-            Flag {
-                namespace: "namespace".to_string(),
-                name: "test2".to_string(),
-                package: "package".to_string(),
-                value: FlagValue::Disabled,
-                staged_value: None,
-                permission: FlagPermission::ReadWrite,
-                value_picked_from: ValuePickedFrom::Default,
-                container: "not_system".to_string(),
-                storage_backend: FlagStorageBackend::Aconfigd,
-            },
-            Flag {
-                namespace: "namespace".to_string(),
-                name: "test3".to_string(),
-                package: "package".to_string(),
-                value: FlagValue::Disabled,
-                staged_value: None,
-                permission: FlagPermission::ReadWrite,
-                value_picked_from: ValuePickedFrom::Default,
-                container: "system".to_string(),
-                storage_backend: FlagStorageBackend::Aconfigd,
-            },
+            TestFlagBuilder::new()
+                .namespace("namespace")
+                .name("test1")
+                .package("package")
+                .value(false)
+                .permission(FlagPermission::FLAG_PERMISSION_READ_WRITE)
+                .value_picked_from(ValuePickedFrom::VALUE_PICKED_FROM_DEFAULT)
+                .container("system")
+                .storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_ACONFIGD)
+                .build(),
+            TestFlagBuilder::new()
+                .namespace("namespace")
+                .name("test2")
+                .package("package")
+                .value(false)
+                .permission(FlagPermission::FLAG_PERMISSION_READ_WRITE)
+                .value_picked_from(ValuePickedFrom::VALUE_PICKED_FROM_DEFAULT)
+                .container("not_system")
+                .storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_ACONFIGD)
+                .build(),
+            TestFlagBuilder::new()
+                .namespace("namespace")
+                .name("test3")
+                .package("package")
+                .value(false)
+                .permission(FlagPermission::FLAG_PERMISSION_READ_WRITE)
+                .value_picked_from(ValuePickedFrom::VALUE_PICKED_FROM_DEFAULT)
+                .container("system")
+                .storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_ACONFIGD)
+                .build(),
         ];
 
         assert_eq!((Filter { container: Some("system".to_string()) }).apply(&flags).len(), 2);
@@ -675,39 +615,36 @@ mod tests {
     #[test]
     fn test_filter_no_container() {
         let flags = vec![
-            Flag {
-                namespace: "namespace".to_string(),
-                name: "test1".to_string(),
-                package: "package".to_string(),
-                value: FlagValue::Disabled,
-                staged_value: None,
-                permission: FlagPermission::ReadWrite,
-                value_picked_from: ValuePickedFrom::Default,
-                container: "system".to_string(),
-                storage_backend: FlagStorageBackend::Aconfigd,
-            },
-            Flag {
-                namespace: "namespace".to_string(),
-                name: "test2".to_string(),
-                package: "package".to_string(),
-                value: FlagValue::Disabled,
-                staged_value: None,
-                permission: FlagPermission::ReadWrite,
-                value_picked_from: ValuePickedFrom::Default,
-                container: "not_system".to_string(),
-                storage_backend: FlagStorageBackend::Aconfigd,
-            },
-            Flag {
-                namespace: "namespace".to_string(),
-                name: "test3".to_string(),
-                package: "package".to_string(),
-                value: FlagValue::Disabled,
-                staged_value: None,
-                permission: FlagPermission::ReadWrite,
-                value_picked_from: ValuePickedFrom::Default,
-                container: "system".to_string(),
-                storage_backend: FlagStorageBackend::Aconfigd,
-            },
+            TestFlagBuilder::new()
+                .namespace("namespace")
+                .name("test1")
+                .package("package")
+                .value(false)
+                .permission(FlagPermission::FLAG_PERMISSION_READ_WRITE)
+                .value_picked_from(ValuePickedFrom::VALUE_PICKED_FROM_DEFAULT)
+                .container("system")
+                .storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_ACONFIGD)
+                .build(),
+            TestFlagBuilder::new()
+                .namespace("namespace")
+                .name("test2")
+                .package("package")
+                .value(false)
+                .permission(FlagPermission::FLAG_PERMISSION_READ_WRITE)
+                .value_picked_from(ValuePickedFrom::VALUE_PICKED_FROM_DEFAULT)
+                .container("not_system")
+                .storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_ACONFIGD)
+                .build(),
+            TestFlagBuilder::new()
+                .namespace("namespace")
+                .name("test3")
+                .package("package")
+                .value(false)
+                .permission(FlagPermission::FLAG_PERMISSION_READ_WRITE)
+                .value_picked_from(ValuePickedFrom::VALUE_PICKED_FROM_DEFAULT)
+                .container("system")
+                .storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_ACONFIGD)
+                .build(),
         ];
 
         assert_eq!((Filter { container: None }).apply(&flags).len(), 3);
@@ -718,17 +655,16 @@ mod tests {
     fn test_set_unset_mainline_beta_flag() {
         let mut rng = rand::thread_rng();
         let namespace = rng.gen::<u32>().to_string();
-        let mut flag = Flag {
-            namespace: namespace.clone(),
-            name: String::from("some_flag"),
-            package: String::from("some_package"),
-            container: String::from("system"),
-            value: FlagValue::Disabled,
-            staged_value: None,
-            permission: FlagPermission::ReadWrite,
-            value_picked_from: ValuePickedFrom::Default,
-            storage_backend: FlagStorageBackend::Aconfigd,
-        };
+        let mut flag = TestFlagBuilder::new()
+            .namespace(&namespace)
+            .name("some_flag")
+            .package("some_package")
+            .container("system")
+            .value(false)
+            .permission(FlagPermission::FLAG_PERMISSION_READ_WRITE)
+            .value_picked_from(ValuePickedFrom::VALUE_PICKED_FROM_DEFAULT)
+            .storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_ACONFIGD)
+            .build();
 
         // negative test to ensure value is not synced over to device config
         assert!(set_flag(&flag, "false", false, &FLAG_SOURCES_PROVIDER).is_ok());
@@ -742,18 +678,18 @@ mod tests {
         assert!(!flags.contains_key(&format!("{namespace}:some_package.some_flag")));
 
         // test setting mainline beta flag
-        flag.storage_backend = FlagStorageBackend::DeviceConfig;
+        flag.set_storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_DEVICE_CONFIG);
         assert!(set_flag(&flag, "true", false, &FLAG_SOURCES_PROVIDER).is_ok());
 
         let result = execute_device_config_command(&["list", &namespace]).unwrap();
         let flags = parse_device_config_output(&result).unwrap();
         let value = flags.get(&String::from("some_package.some_flag")).unwrap();
-        assert_eq!(*value, FlagValue::Enabled);
+        assert_eq!(*value, "enabled".to_string());
 
         let result = execute_device_config_command(&["list", "device_config_overrides"]).unwrap();
         let flags = parse_device_config_output(&result).unwrap();
         let value = flags.get(&format!("{namespace}:some_package.some_flag")).unwrap();
-        assert_eq!(*value, FlagValue::Enabled);
+        assert_eq!(*value, "enabled".to_string());
 
         // test unset mainline beta flag
         assert!(unset(&flag, false, &FLAG_SOURCES_PROVIDER).is_ok());
@@ -771,32 +707,33 @@ mod tests {
     fn test_resolve_flag_aconfigd_without_mainline_beta_namespace() {
         let aconfigd_flag = TestFlagBuilder::new()
             .name("test_aconfigd_flag")
-            .storage_backend(FlagStorageBackend::Aconfigd)
+            .storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_ACONFIGD)
             .build();
         let resolved = resolve_flag(Some(aconfigd_flag), None, None);
         assert!(resolved.is_some());
         let resolved = resolved.unwrap();
-        assert_eq!(resolved.name, "test_aconfigd_flag");
+        assert_eq!(resolved.name(), "test_aconfigd_flag");
     }
 
     #[test]
     fn test_resolve_flag_aconfigd_with_mainline_beta_namespace() {
         let aconfigd_flag = TestFlagBuilder::new()
             .name("test_aconfigd_flag")
-            .storage_backend(FlagStorageBackend::Aconfigd)
+            .storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_ACONFIGD)
             .build();
         let mainline_beta_namespace =
             MainlineBetaNamespace { container: "test_container", allow_exported: false };
         let resolved = resolve_flag(Some(aconfigd_flag), None, Some(&mainline_beta_namespace));
         assert!(resolved.is_some());
         let resolved = resolved.unwrap();
-        assert_eq!(resolved.name, "test_aconfigd_flag");
+        assert_eq!(resolved.name(), "test_aconfigd_flag");
     }
 
     #[test]
     fn test_resolve_flag_device_config_only_without_mainline_beta_namespace() {
-        let device_config_flag =
-            TestFlagBuilder::new().storage_backend(FlagStorageBackend::DeviceConfig).build();
+        let device_config_flag = TestFlagBuilder::new()
+            .storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_DEVICE_CONFIG)
+            .build();
         let resolved = resolve_flag(None, Some(device_config_flag), None);
         assert!(resolved.is_none());
     }
@@ -805,36 +742,39 @@ mod tests {
     fn test_resolve_flag_device_config_only_with_mainline_beta_namespace() {
         let device_config_flag = TestFlagBuilder::new()
             .name("test_device_config_flag")
-            .storage_backend(FlagStorageBackend::DeviceConfig)
+            .storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_DEVICE_CONFIG)
             .build();
         let mainline_beta_namespace =
             MainlineBetaNamespace { container: "test_container", allow_exported: false };
         let resolved = resolve_flag(None, Some(device_config_flag), Some(&mainline_beta_namespace));
         assert!(resolved.is_some());
         let resolved = resolved.unwrap();
-        assert_eq!(resolved.name, "test_device_config_flag");
+        assert_eq!(resolved.name(), "test_device_config_flag");
     }
 
     #[test]
     fn test_resolve_flag_both_backends_without_mainline_beta_namespace() {
-        let aconfigd_flag =
-            TestFlagBuilder::new().storage_backend(FlagStorageBackend::Aconfigd).build();
-        let device_config_flag =
-            TestFlagBuilder::new().storage_backend(FlagStorageBackend::DeviceConfig).build();
+        let aconfigd_flag = TestFlagBuilder::new()
+            .storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_ACONFIGD)
+            .build();
+        let device_config_flag = TestFlagBuilder::new()
+            .storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_DEVICE_CONFIG)
+            .build();
         let resolved = resolve_flag(Some(aconfigd_flag), Some(device_config_flag), None);
         assert!(resolved.is_some());
         let resolved = resolved.unwrap();
-        assert_eq!(resolved.storage_backend, FlagStorageBackend::Aconfigd);
+        assert_eq!(resolved.storage_backend(), FlagStorageBackend::FLAG_STORAGE_BACKEND_ACONFIGD);
     }
 
     #[test]
     fn test_resolve_flag_both_backends_with_mainline_beta_namespace_in_platform_container() {
         let aconfigd_flag = TestFlagBuilder::new()
-            .storage_backend(FlagStorageBackend::Aconfigd)
+            .storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_ACONFIGD)
             .container("platform_container")
             .build();
-        let device_config_flag =
-            TestFlagBuilder::new().storage_backend(FlagStorageBackend::DeviceConfig).build();
+        let device_config_flag = TestFlagBuilder::new()
+            .storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_DEVICE_CONFIG)
+            .build();
         let mainline_beta_namespace =
             MainlineBetaNamespace { container: "mainline_container", allow_exported: false };
         let resolved = resolve_flag(
@@ -844,17 +784,18 @@ mod tests {
         );
         assert!(resolved.is_some());
         let resolved = resolved.unwrap();
-        assert_eq!(resolved.storage_backend, FlagStorageBackend::Aconfigd);
+        assert_eq!(resolved.storage_backend(), FlagStorageBackend::FLAG_STORAGE_BACKEND_ACONFIGD);
     }
 
     #[test]
     fn test_resolve_flag_both_backends_with_mainline_beta_namespace_in_mainline_container() {
         let aconfigd_flag = TestFlagBuilder::new()
-            .storage_backend(FlagStorageBackend::Aconfigd)
+            .storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_ACONFIGD)
             .container("mainline_container")
             .build();
-        let device_config_flag =
-            TestFlagBuilder::new().storage_backend(FlagStorageBackend::DeviceConfig).build();
+        let device_config_flag = TestFlagBuilder::new()
+            .storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_DEVICE_CONFIG)
+            .build();
         let mainline_beta_namespace =
             MainlineBetaNamespace { container: "mainline_container", allow_exported: false };
         let resolved = resolve_flag(
@@ -864,6 +805,9 @@ mod tests {
         );
         assert!(resolved.is_some());
         let resolved = resolved.unwrap();
-        assert_eq!(resolved.storage_backend, FlagStorageBackend::DeviceConfig);
+        assert_eq!(
+            resolved.storage_backend(),
+            FlagStorageBackend::FLAG_STORAGE_BACKEND_DEVICE_CONFIG
+        );
     }
 }
