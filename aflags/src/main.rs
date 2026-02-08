@@ -27,10 +27,14 @@ pub use aflags_protos::ProtoFlagPermission as FlagPermission;
 pub use aflags_protos::ProtoFlagStorageBackend as FlagStorageBackend;
 pub use aflags_protos::ProtoValuePickedFrom as ValuePickedFrom;
 
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{anyhow, bail, ensure, Result};
+use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
+use base64::Engine as _;
 use clap::Parser;
 use log::debug;
+use protobuf::Message;
 use std::collections::{HashMap, HashSet};
+use std::io::Write;
 
 mod aconfig_storage_source;
 mod device_config_source;
@@ -129,6 +133,12 @@ Rows in the table from the `list` command follow this format:
   * `container`: the container for the flag, configured in its definition.
 ";
 
+#[derive(clap::ValueEnum, Clone, Copy, Debug)]
+enum OutputFormat {
+    Text,
+    Proto,
+}
+
 #[derive(Parser, Debug)]
 #[clap(long_about=ABOUT_TEXT, bin_name="aflags")]
 struct Cli {
@@ -143,6 +153,12 @@ enum Command {
         /// Optionally filter by container name.
         #[clap(short = 'c', long = "container")]
         container: Option<String>,
+
+        /// Output format.
+        ///
+        /// When using 'proto', the output is Base64 encoded.
+        #[clap(short = 'f', long = "format", default_value = "text")]
+        format: OutputFormat,
     },
 
     /// Locally enable an aconfig flag on this device.
@@ -411,38 +427,60 @@ fn list_flags<A: FlagSource, B: FlagSource>(
 
 fn list<A: FlagSource, B: FlagSource>(
     container: Option<String>,
+    format: OutputFormat,
     provider: &FlagSourcesProvider<A, B>,
-) -> Result<String> {
+) -> Result<Vec<u8>> {
     check_container(&container)?;
 
     let flags = list_flags(container, provider)?;
 
-    let padding_info = PaddingInfo {
-        longest_flag_col: flags.iter().map(|f| flag_qualified_name(f).len()).max().unwrap_or(0),
-        longest_val_col: flags.iter().map(|f| f.value().len()).max().unwrap_or(0),
-        longest_staged_val_col: flags
-            .iter()
-            .map(|f| flag_display_staged_value(f).len())
-            .max()
-            .unwrap_or(0),
-        longest_value_picked_from_col: flags
-            .iter()
-            .map(|f| value_picked_from_to_string(f.value_picked_from()).len())
-            .max()
-            .unwrap_or(0),
-        longest_permission_col: flags
-            .iter()
-            .map(|f| flag_permission_to_string(f.permission()).len())
-            .max()
-            .unwrap_or(0),
-    };
+    match format {
+        OutputFormat::Text => {
+            let padding_info = PaddingInfo {
+                longest_flag_col: flags
+                    .iter()
+                    .map(|f| flag_qualified_name(f).len())
+                    .max()
+                    .unwrap_or(0),
+                longest_val_col: flags.iter().map(|f| f.value().len()).max().unwrap_or(0),
+                longest_staged_val_col: flags
+                    .iter()
+                    .map(|f| flag_display_staged_value(f).len())
+                    .max()
+                    .unwrap_or(0),
+                longest_value_picked_from_col: flags
+                    .iter()
+                    .map(|f| value_picked_from_to_string(f.value_picked_from()).len())
+                    .max()
+                    .unwrap_or(0),
+                longest_permission_col: flags
+                    .iter()
+                    .map(|f| flag_permission_to_string(f.permission()).len())
+                    .max()
+                    .unwrap_or(0),
+            };
 
-    let mut result = String::from("");
-    for flag in flags {
-        let row = format_flag_row(&flag, &padding_info);
-        result.push_str(&row);
+            let mut result = String::from("");
+            for flag in flags {
+                let row = format_flag_row(&flag, &padding_info);
+                result.push_str(&row);
+            }
+            result.push('\n');
+            Ok(result.into_bytes())
+        }
+        OutputFormat::Proto => {
+            if !configinfra_framework_flags_rust::aflags_list_proto() {
+                bail!("Protobuf output format is not enabled. Please enable the 'android.provider.flags.aflags_list_proto' flag to use this feature if needed.");
+            }
+            let mut flag_list = ProtoFlagList::new();
+            flag_list.flags = flags;
+            let bytes = flag_list.write_to_bytes()?;
+            // Base64 encode to prevent binary mangling over adb shell.
+            let mut result = BASE64_STANDARD.encode(bytes);
+            result.push('\n');
+            Ok(result.into_bytes())
+        }
     }
-    Ok(result)
 }
 
 fn main() -> Result<()> {
@@ -464,7 +502,7 @@ fn main() -> Result<()> {
 
     let cli = Cli::parse();
     let output = match cli.command {
-        Command::List { container } => list(container, &flag_sources_provider)
+        Command::List { container, format } => list(container, format, &flag_sources_provider)
             .map_err(|err| anyhow!("could not list flags: {err}"))
             .map(Some),
         Command::Enable { qualified_name, immediate } => {
@@ -481,7 +519,9 @@ fn main() -> Result<()> {
         }
     };
     match output {
-        Ok(Some(text)) => println!("{text}"),
+        Ok(Some(bytes)) => {
+            std::io::stdout().write_all(&bytes)?;
+        }
         Ok(None) => (),
         Err(message) => println!("Error: {message}"),
     }
@@ -809,5 +849,29 @@ mod tests {
             resolved.storage_backend(),
             FlagStorageBackend::FLAG_STORAGE_BACKEND_DEVICE_CONFIG
         );
+    }
+
+    #[test]
+    fn test_proto_serialization() {
+        let mut flag = Flag::new();
+        flag.set_namespace("namespace".to_string());
+        flag.set_name("test1".to_string());
+        flag.set_package("package".to_string());
+        flag.set_value(VALUE_DISABLED.to_string());
+        flag.set_permission(FlagPermission::FLAG_PERMISSION_READ_WRITE);
+        flag.set_value_picked_from(ValuePickedFrom::VALUE_PICKED_FROM_DEFAULT);
+        flag.set_container("system".to_string());
+        flag.set_storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_ACONFIGD);
+
+        let mut flag_list = ProtoFlagList::new();
+        flag_list.flags.push(flag.clone());
+
+        let bytes = flag_list.write_to_bytes().unwrap();
+        let parsed_list = ProtoFlagList::parse_from_bytes(&bytes).unwrap();
+
+        assert_eq!(parsed_list.flags.len(), 1);
+        assert_eq!(parsed_list.flags[0].name(), flag.name());
+        assert_eq!(parsed_list.flags[0].package(), flag.package());
+        assert_eq!(parsed_list.flags[0].value(), VALUE_DISABLED);
     }
 }
