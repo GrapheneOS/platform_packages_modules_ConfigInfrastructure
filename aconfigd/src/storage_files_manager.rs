@@ -22,7 +22,7 @@ use aconfigd_protos::{
     ProtoFlagOverride, ProtoFlagOverrideType, ProtoLocalFlagOverrides, ProtoOTAFlagStagingMessage,
     ProtoPersistStorageRecord, ProtoPersistStorageRecords, ProtoRemoveOverrideType,
 };
-use log::debug;
+use log::{debug, warn};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -249,6 +249,7 @@ impl StorageFilesManager {
                 &record.default_flag_info,
             )?;
         }
+        self.update_bootloader()?;
         Ok(())
     }
 
@@ -297,6 +298,7 @@ impl StorageFilesManager {
             }
         }
 
+        self.update_bootloader()?;
         Ok(())
     }
 
@@ -401,7 +403,9 @@ impl StorageFilesManager {
 
         let context = storage_files.get_package_flag_context(package, flag)?;
         let immediate = remove_override_type == ProtoRemoveOverrideType::REMOVE_LOCAL_IMMEDIATE;
-        storage_files.remove_local_override(&context, immediate)
+        storage_files.remove_local_override(&context, immediate)?;
+        self.update_bootloader()?;
+        Ok(())
     }
 
     /// Remove all local overrides
@@ -410,6 +414,7 @@ impl StorageFilesManager {
         for storage_files in self.all_storage_files.values_mut() {
             storage_files.remove_all_local_overrides()?;
         }
+        self.update_bootloader()?;
         Ok(())
     }
 
@@ -477,6 +482,69 @@ impl StorageFilesManager {
             }
         }
         Ok(flags)
+    }
+
+    /// Update bootloader with special flags
+    pub(crate) fn update_bootloader(&mut self) -> Result<(), AconfigdError> {
+        if !aconfig_new_storage_flags::enable_bootloader_sync() {
+            return Ok(());
+        }
+
+        match rustutils::android::system_properties::read("kcmdline.loaded") {
+            Ok(Some(val)) if val == "1" => {
+                debug!("kcmdline is loaded, proceed to update bootloader");
+            }
+            _ => {
+                debug!("kcmdline is not loaded, skip update bootloader");
+                return Ok(());
+            }
+        }
+
+        debug!("updating bootloader with special flags");
+        let kcmdline_flags =
+            [("com.android.kcmdline", "rust_binder", "kcmdline.binder", "rust", "unset")];
+
+        for (package, name, property, on_value, off_value) in kcmdline_flags {
+            if let Some(snapshot) = self.get_flag_snapshot(package, name)? {
+                let next_boot_value = if snapshot.has_local_override {
+                    snapshot.local_value
+                } else if snapshot.has_server_override {
+                    snapshot.server_value
+                } else {
+                    snapshot.default_value
+                };
+
+                let property_value = if next_boot_value == "true" { on_value } else { off_value };
+
+                let current_value = rustutils::android::system_properties::read(property);
+                let is_different = match current_value {
+                    Ok(val) => val != Some(property_value.to_string()),
+                    Err(errmsg) => {
+                        warn!("failed to read system property {}: {:?}", property, errmsg);
+                        true
+                    }
+                };
+
+                if is_different {
+                    debug!(
+                        "flag {}.{} next boot value is {}, writing {} to {}",
+                        package, name, next_boot_value, property_value, property
+                    );
+
+                    rustutils::android::system_properties::write(property, property_value)
+                        .map_err(|errmsg| AconfigdError::FailToWriteSystemProperty {
+                            name: property.to_string(),
+                            errmsg,
+                        })?;
+                } else {
+                    debug!(
+                        "flag {}.{} next boot value is {}, property {} already has value {}",
+                        package, name, next_boot_value, property, property_value
+                    );
+                }
+            }
+        }
+        Ok(())
     }
 }
 
