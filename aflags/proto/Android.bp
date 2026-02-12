@@ -1,0 +1,58 @@
+// Copyright (C) 2026 The Android Open Source Project
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package {
+    default_team: "trendy_team_android_core_experiments",
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
+rust_protobuf {
+    name: "libaflags_rust_proto",
+    crate_name: "aflags_rust_proto",
+    source_stem: "aflags_rust_proto_source",
+    protos: [
+        "aflags.proto",
+    ],
+    host_supported: true,
+    min_sdk_version: "34",
+    apex_available: [
+        "com.android.configinfrastructure",
+        "//apex_available:platform",
+    ],
+}
+
+rust_defaults {
+    name: "aflags_protos.defaults",
+    edition: "2024",
+    clippy_lints: "android",
+    lints: "android",
+    srcs: ["src/lib.rs"],
+    rustlibs: [
+        "libaflags_rust_proto",
+        "libanyhow",
+        "libprotobuf",
+    ],
+    min_sdk_version: "34",
+}
+
+rust_library {
+    name: "libaflags_protos_rust",
+    crate_name: "aflags_protos",
+    defaults: ["aflags_protos.defaults"],
+    host_supported: true,
+    apex_available: [
+        "com.android.configinfrastructure",
+        "//apex_available:platform",
+    ],
+}

@@ -10,6 +10,7 @@ rust_defaults {
     lints: "android",
     srcs: ["src/main.rs"],
     rustlibs: [
+        "libaflags_protos_rust",
         "libaconfig_device_paths",
         "libaconfig_flags",
         "libaconfig_protos",
@@ -17,6 +18,7 @@ rust_defaults {
         "libaconfig_storage_read_api",
         "libaconfig_storage_file",
         "libanyhow",
+        "libbase64_rust",
         "libclap",
         "libmainline_beta_namespace_config",
         "libnix",

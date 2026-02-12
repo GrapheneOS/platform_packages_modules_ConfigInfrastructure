@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-use crate::{Flag, FlagPermission, FlagSource, FlagStorageBackend, FlagValue, ValuePickedFrom};
+use crate::flag_value_from_str;
+use crate::{Flag, FlagPermission, FlagSource, FlagStorageBackend, ValuePickedFrom};
 
 use anyhow::{anyhow, bail, Result};
 use regex::Regex;
@@ -24,15 +25,15 @@ use std::str;
 
 pub struct DeviceConfigSource {}
 
-pub(crate) fn parse_device_config_output(raw: &str) -> Result<HashMap<String, FlagValue>> {
+pub(crate) fn parse_device_config_output(raw: &str) -> Result<HashMap<String, String>> {
     let mut flags = HashMap::new();
     let regex = Regex::new(r"(?m)^([[[:alnum:]]:_/.*]+)=(true|false)$")?;
     for capture in regex.captures_iter(raw) {
         let key =
             capture.get(1).ok_or(anyhow!("invalid device_config output"))?.as_str().to_string();
-        let value = FlagValue::try_from(
+        let value = flag_value_from_str(
             capture.get(2).ok_or(anyhow!("invalid device_config output"))?.as_str(),
-        )?;
+        );
         flags.insert(key, value);
     }
     Ok(flags)
@@ -68,7 +69,7 @@ fn convert_staged_flag_name(staged_name: &str) -> Option<String> {
     }
 }
 
-fn extract_staged_flags(flags: HashMap<String, FlagValue>) -> HashMap<String, FlagValue> {
+fn extract_staged_flags(flags: HashMap<String, String>) -> HashMap<String, String> {
     let mut staged_flags = HashMap::new();
 
     for (staged_name, value) in flags {
@@ -80,38 +81,34 @@ fn extract_staged_flags(flags: HashMap<String, FlagValue>) -> HashMap<String, Fl
     staged_flags
 }
 
-fn read_device_config_flags() -> Result<HashMap<String, FlagValue>> {
+fn read_device_config_flags() -> Result<HashMap<String, String>> {
     let output = execute_device_config_command(&["list"])?;
     parse_device_config_output(output.as_str())
 }
 
-fn read_staged_device_config_flags() -> Result<HashMap<String, FlagValue>> {
+fn read_staged_device_config_flags() -> Result<HashMap<String, String>> {
     let output = execute_device_config_command(&["list", "staged"])?;
     let staged_flag_map = parse_device_config_output(output.as_str())?;
     Ok(extract_staged_flags(staged_flag_map))
 }
 
-fn make_device_config_flag(
-    name: &str,
-    value: &FlagValue,
-    staged_value: Option<&FlagValue>,
-) -> Option<Flag> {
+fn make_device_config_flag(name: &str, value: &str, staged_value: Option<&String>) -> Option<Flag> {
     let slash_index = name.find('/')?;
     let (namespace, name) = (&name[..slash_index], &name[slash_index + 1..]);
     let dot_index = name.rfind('.')?;
     let (package, name) = (&name[..dot_index], &name[dot_index + 1..]);
 
-    Some(Flag {
-        namespace: namespace.to_string(),
-        name: name.to_string(),
-        package: package.to_string(),
-        container: "UNKNOWN_CONTAINER".to_string(), // TODO: Is there something better to put here?
-        value: *value,
-        staged_value: staged_value.cloned(),
-        permission: FlagPermission::ReadWrite, // TODO: Is this correct?
-        value_picked_from: ValuePickedFrom::Default, // TODO: Is this correct?
-        storage_backend: FlagStorageBackend::DeviceConfig,
-    })
+    let mut f = Flag::new();
+    f.set_namespace(namespace.to_string());
+    f.set_name(name.to_string());
+    f.set_package(package.to_string());
+    f.set_container("UNKNOWN_CONTAINER".to_string()); // TODO: Is there something better to put here?
+    f.set_value(value.to_string());
+    f.staged_value = staged_value.cloned();
+    f.set_permission(FlagPermission::FLAG_PERMISSION_READ_WRITE); // TODO: Is this correct?
+    f.set_value_picked_from(ValuePickedFrom::VALUE_PICKED_FROM_DEFAULT); // TODO: Is this correct?
+    f.set_storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_DEVICE_CONFIG);
+    Some(f)
 }
 
 impl FlagSource for DeviceConfigSource {
@@ -154,6 +151,7 @@ impl FlagSource for DeviceConfigSource {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{VALUE_DISABLED, VALUE_ENABLED};
     use rand::Rng;
 
     const FLAG_SOURCE: DeviceConfigSource = DeviceConfigSource {};
@@ -168,9 +166,9 @@ namespace_two:android.flag_one=true
 android.flag_two=nonsense
 "#;
         let expected = HashMap::from([
-            ("namespace_one/com.foo.bar.flag_one".to_string(), FlagValue::Enabled),
-            ("com.foo.bar.flag_two".to_string(), FlagValue::Disabled),
-            ("namespace_two:android.flag_one".to_string(), FlagValue::Enabled),
+            ("namespace_one/com.foo.bar.flag_one".to_string(), VALUE_ENABLED.to_string()),
+            ("com.foo.bar.flag_two".to_string(), VALUE_DISABLED.to_string()),
+            ("namespace_two:android.flag_one".to_string(), VALUE_ENABLED.to_string()),
         ]);
         let actual = parse_device_config_output(input).unwrap();
         assert_eq!(expected, actual);
@@ -201,14 +199,14 @@ android.flag_two=nonsense
         let result = execute_device_config_command(&["list", &namespace]).unwrap();
         let flags = parse_device_config_output(&result).unwrap();
         let flag_value = flags.get("aflags_test_package.aflags_test_flag").unwrap();
-        assert_eq!(*flag_value, FlagValue::Disabled);
+        assert_eq!(*flag_value, VALUE_DISABLED.to_string());
 
         let result = execute_device_config_command(&["list", "device_config_overrides"]).unwrap();
         let flags = parse_device_config_output(&result).unwrap();
         println!("{flags:?}");
         let flag_value =
             flags.get(&format!("{namespace}:aflags_test_package.aflags_test_flag")).unwrap();
-        assert_eq!(*flag_value, FlagValue::Disabled);
+        assert_eq!(*flag_value, VALUE_DISABLED.to_string());
 
         FLAG_SOURCE.unset_flag(&namespace, "aflags_test_package.aflags_test_flag", false).unwrap();
     }

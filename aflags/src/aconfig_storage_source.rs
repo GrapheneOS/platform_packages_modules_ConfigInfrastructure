@@ -1,6 +1,6 @@
 use crate::load_protos;
-use crate::{Flag, FlagSource};
-use crate::{FlagPermission, FlagStorageBackend, FlagValue, ValuePickedFrom};
+use crate::{flag_qualified_name, flag_value_from_str};
+use crate::{Flag, FlagPermission, FlagSource, FlagStorageBackend, ValuePickedFrom};
 use aconfigd_protos::{
     ProtoFlagOverrideMessage, ProtoFlagOverrideType, ProtoFlagQueryReturnMessage,
     ProtoListStorageMessage, ProtoListStorageMessageMsg, ProtoRemoveLocalOverrideMessage,
@@ -37,19 +37,18 @@ impl AconfigdSocket {
 }
 
 fn convert(msg: ProtoFlagQueryReturnMessage, containers: &HashMap<String, String>) -> Result<Flag> {
-    let value = FlagValue::try_from(
+    let value = flag_value_from_str(
         msg.boot_flag_value
-            .clone()
-            .ok_or(anyhow!("no boot flag value for {:?}", msg.flag_name))?
-            .as_str(),
-    )?;
+            .as_deref()
+            .ok_or(anyhow!("no boot flag value for {:?}", msg.flag_name))?,
+    );
 
     let value_picked_from = if msg.has_boot_local_override.unwrap_or(false) {
-        ValuePickedFrom::Local
+        ValuePickedFrom::VALUE_PICKED_FROM_LOCAL
     } else if msg.boot_flag_value == msg.default_flag_value {
-        ValuePickedFrom::Default
+        ValuePickedFrom::VALUE_PICKED_FROM_DEFAULT
     } else {
-        ValuePickedFrom::Server
+        ValuePickedFrom::VALUE_PICKED_FROM_SERVER
     };
 
     let staged_value = if msg.has_local_override.unwrap_or(false) {
@@ -57,20 +56,20 @@ fn convert(msg: ProtoFlagQueryReturnMessage, containers: &HashMap<String, String
         if msg.boot_flag_value == msg.local_flag_value {
             None
         } else {
-            Some(FlagValue::try_from(
-                msg.local_flag_value.ok_or(anyhow!("no local flag value"))?.as_str(),
-            )?)
+            Some(flag_value_from_str(
+                msg.local_flag_value.as_deref().ok_or(anyhow!("no local flag value"))?,
+            ))
         }
     } else {
         // Otherwise, display if we're flipping to the default, or a server value.
-        let boot_value = msg.boot_flag_value.unwrap_or("".to_string());
-        let server_value = msg.server_flag_value.unwrap_or("".to_string());
-        let default_value = msg.default_flag_value.unwrap_or("".to_string());
+        let boot_value = msg.boot_flag_value.as_deref().unwrap_or_default();
+        let server_value = msg.server_flag_value.as_deref().unwrap_or_default();
+        let default_value = msg.default_flag_value.as_deref().unwrap_or_default();
 
-        if boot_value != server_value && server_value != *"" {
-            Some(FlagValue::try_from(server_value.as_str())?)
+        if boot_value != server_value && !server_value.is_empty() {
+            Some(flag_value_from_str(server_value))
         } else if msg.has_boot_local_override.unwrap_or(false) && boot_value != default_value {
-            Some(FlagValue::try_from(default_value.as_str())?)
+            Some(flag_value_from_str(default_value))
         } else {
             None
         }
@@ -79,9 +78,9 @@ fn convert(msg: ProtoFlagQueryReturnMessage, containers: &HashMap<String, String
     let permission = match msg.is_readwrite {
         Some(is_readwrite) => {
             if is_readwrite {
-                FlagPermission::ReadWrite
+                FlagPermission::FLAG_PERMISSION_READ_WRITE
             } else {
-                FlagPermission::ReadOnly
+                FlagPermission::FLAG_PERMISSION_READ_ONLY
             }
         }
         None => return Err(anyhow!("missing permission")),
@@ -90,22 +89,22 @@ fn convert(msg: ProtoFlagQueryReturnMessage, containers: &HashMap<String, String
     let name = msg.flag_name.ok_or(anyhow!("missing flag name"))?;
     let package = msg.package_name.ok_or(anyhow!("missing package name"))?;
     let qualified_name = format!("{package}.{name}");
-    Ok(Flag {
-        name,
-        package,
-        value,
-        permission,
-        value_picked_from,
-        staged_value,
-        container: containers
-            .get(&qualified_name)
-            .cloned()
-            .unwrap_or_else(|| "<no container>".to_string())
-            .to_string(),
-        // TODO: remove once DeviceConfig is not in the CLI.
-        namespace: "-".to_string(),
-        storage_backend: FlagStorageBackend::Unspecified,
-    })
+    let mut f = Flag::new();
+    f.set_name(name);
+    f.set_package(package);
+    f.set_value(value);
+    f.set_permission(permission);
+    f.set_value_picked_from(value_picked_from);
+    if let Some(v) = staged_value {
+        f.set_staged_value(v);
+    }
+    f.set_container(
+        containers.get(&qualified_name).cloned().unwrap_or_else(|| "<no container>".to_string()),
+    );
+    // TODO: remove once DeviceConfig is not in the CLI.
+    f.set_namespace("-".to_string());
+    f.set_storage_backend(FlagStorageBackend::FLAG_STORAGE_BACKEND_UNSPECIFIED);
+    Ok(f)
 }
 
 fn write_socket_messages(
@@ -209,7 +208,7 @@ impl FlagSource for AconfigStorageSource {
         let container_map: HashMap<String, String> = flag_defaults
             .clone()
             .into_iter()
-            .map(|default| (default.qualified_name(), default.container))
+            .map(|default| (flag_qualified_name(&default), default.container().to_string()))
             .collect();
         let socket_flags: Vec<Result<Flag>> = all_messages
             .into_iter()
@@ -221,16 +220,16 @@ impl FlagSource for AconfigStorageSource {
         // If the sockets are unavailable, just display the proto defaults.
         let mut flags = flag_defaults.clone();
         let name_to_socket_flag: HashMap<String, Flag> =
-            socket_flags?.into_iter().map(|p| (p.qualified_name(), p)).collect();
+            socket_flags?.into_iter().map(|p| (flag_qualified_name(&p), p)).collect();
         flags.iter_mut().for_each(|flag| {
-            if let Some(socket_flag) = name_to_socket_flag.get(&flag.qualified_name()) {
+            if let Some(socket_flag) = name_to_socket_flag.get(&flag_qualified_name(flag)) {
                 // socket flags do not contain storage backend and namespace  information,
                 // copy these fields and assign back
-                let namespace = flag.namespace.clone();
-                let storage_backend = flag.storage_backend.clone();
+                let namespace = flag.namespace().to_string();
+                let storage_backend = flag.storage_backend();
                 *flag = socket_flag.clone();
-                flag.storage_backend = storage_backend;
-                flag.namespace = namespace;
+                flag.set_storage_backend(storage_backend);
+                flag.set_namespace(namespace);
             }
         });
 
