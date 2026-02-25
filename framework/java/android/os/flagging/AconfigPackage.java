@@ -19,7 +19,6 @@ package android.os.flagging;
 import static android.aconfig.storage.TableUtils.StorageFilesBundle;
 import static android.provider.flags.Flags.FLAG_NEW_STORAGE_PUBLIC_API;
 import static android.provider.flags.Flags.FLAG_PUBLIC_INTERNAL_READ_API;
-import static android.provider.flags.Flags.readPlatformFromPlatformApi;
 
 import android.aconfig.storage.AconfigStorageException;
 import android.aconfig.storage.FlagTable;
@@ -83,7 +82,7 @@ public class AconfigPackage {
      */
     @android.ravenwood.annotation.RavenwoodReplace
     private static boolean getReadPlatformFromPlatformApi() {
-        return readPlatformFromPlatformApi() && Build.VERSION.SDK_INT > 35;
+        return Build.VERSION.SDK_INT > 35;
     }
 
     private static boolean getReadPlatformFromPlatformApi$ravenwood() {
