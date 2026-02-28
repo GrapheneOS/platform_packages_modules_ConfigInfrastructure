@@ -80,12 +80,12 @@ flag {
   name: "aflags_debug_improvements"
   namespace: "core_experiments_team_internal"
   description: "Flag to enable debuggability improvements for aflags"
-  bug: "417540341"
+  bug: "473526294"
 }
 
 flag {
   name: "aflags_list_proto"
   namespace: "core_experiments_team_internal"
   description: "Flag to enable --format proto for aflags list command"
-  bug: "417540341"
+  bug: "314981157"
 }
