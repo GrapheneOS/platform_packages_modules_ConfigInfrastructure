@@ -121,6 +121,8 @@ final class WritableFlags {
                 "alarm_manager/allow_while_idle_compat_window",
                 "alarm_manager/allow_while_idle_quota",
                 "alarm_manager/allow_while_idle_window",
+                "alarm_manager/allow_while_idle_listener_quota",
+                "alarm_manager/allow_while_idle_listener_window",
                 "alarm_manager/app_standby_restricted_window",
                 "alarm_manager/app_standby_window",
                 "alarm_manager/lazy_batching",
