@@ -45,6 +45,8 @@ mod load_protos;
 
 use mainline_beta_namespace_config::{get_mainline_beta_namespace_map, MainlineBetaNamespace};
 
+const AID_SHELL: u32 = 2000;
+
 /// Normalizes a flag value for display in the CLI.
 ///
 /// Maps "true" or "enabled" to "enabled", and "false" or "disabled" to "disabled".
@@ -484,7 +486,19 @@ fn list<A: FlagSource, B: FlagSource>(
 }
 
 fn main() -> Result<()> {
-    ensure!(nix::unistd::Uid::current().is_root(), "must be root");
+    let cli = Cli::parse();
+    let uid = nix::unistd::Uid::current();
+
+    match cli.command {
+        Command::List { .. } => {
+            if uid.as_raw() == AID_SHELL {
+                ensure!(uid.is_root(), "must be root");
+            }
+        }
+        _ => {
+            ensure!(uid.is_root(), "must be root");
+        }
+    }
 
     if configinfra_framework_flags_rust::aflags_debug_improvements() {
         logger::init(
@@ -500,7 +514,6 @@ fn main() -> Result<()> {
         device_config_source: DeviceConfigSource {},
     };
 
-    let cli = Cli::parse();
     let output = match cli.command {
         Command::List { container, format } => list(container, format, &flag_sources_provider)
             .map_err(|err| anyhow!("could not list flags: {err}"))
