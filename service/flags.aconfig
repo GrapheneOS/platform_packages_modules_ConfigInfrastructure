@@ -2,44 +2,6 @@ package: "com.android.server.deviceconfig"
 container: "com.android.configinfrastructure"
 
 flag {
-    name: "enable_reboot_notification"
-    namespace: "core_experiments_team_internal"
-    description: "If enabled, a notification appears when flags are staged to be applied on reboot."
-    bug: "296462695"
-}
-
-flag {
-  name: "enable_unattended_reboot"
-  namespace: "core_experiments_team_internal"
-  description: "This flag controls enabling the unattended reboot feature for applying flags."
-  bug: "297502146"
-}
-
-flag {
-  name: "enable_sim_pin_replay"
-  namespace: "core_experiments_team_internal"
-  description: "This flag controls enabling sim pin replay for unattended reboot."
-  bug: "305269414"
-}
-
-flag {
-  name: "enable_custom_reboot_time_configurations"
-  namespace: "core_experiments_team_internal"
-  description: "This flags controls allowing devices to configure the reboot window and frequency."
-  bug: "322076175"
-}
-
-flag {
-  name: "fix_flag_staging_notification_resource_fetching"
-  namespace: "core_experiments_team_internal"
-  description: "Fix to avoid using a non-existing resources package for flag-staging notifications."
-  bug: "329143970"
-  metadata {
-    purpose: PURPOSE_BUGFIX
-  }
-}
-
-flag {
   name: "use_descriptive_log_message"
   namespace: "core_experiments_team_internal"
   description: "Log sticky local override instead of just local override."
