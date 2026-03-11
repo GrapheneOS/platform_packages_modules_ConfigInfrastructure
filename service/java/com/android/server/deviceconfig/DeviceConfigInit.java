@@ -1,7 +1,5 @@
 package com.android.server.deviceconfig;
 
-import static com.android.server.deviceconfig.Flags.enableRebootNotification;
-import static com.android.server.deviceconfig.Flags.enableUnattendedReboot;
 import static com.android.server.deviceconfig.Flags.useDescriptiveLogMessage;
 
 import java.io.IOException;
@@ -45,10 +43,6 @@ public class DeviceConfigInit {
 
     private static final String CONFIGURATION_NAMESPACE = "configuration";
     private static final String OVERRIDES_NAMESPACE = "device_config_overrides";
-    private static final String BOOT_NOTIFICATION_FLAG =
-            "ConfigInfraFlags__enable_boot_notification";
-    private static final String UNATTENDED_REBOOT_FLAG =
-            "ConfigInfraFlags__enable_unattended_reboot";
 
     private DeviceConfigInit() {
         // do not instantiate
@@ -58,7 +52,6 @@ public class DeviceConfigInit {
     @SystemApi(client = SystemApi.Client.SYSTEM_SERVER)
     public static class Lifecycle extends SystemService {
         private DeviceConfigServiceImpl mService;
-        private UnattendedRebootManager mUnattendedRebootManager;
 
         /** @hide */
         @SystemApi(client = SystemApi.Client.SYSTEM_SERVER)
@@ -89,58 +82,6 @@ public class DeviceConfigInit {
                 }
             }
 
-            boolean notificationEnabled =
-                    DeviceConfig.getBoolean(CONFIGURATION_NAMESPACE, BOOT_NOTIFICATION_FLAG, false);
-            if (notificationEnabled && enableRebootNotification()) {
-                Map<String, Set<String>> aconfigFlags = new HashMap<>();
-                try {
-                    addAconfigFlagsFromFile(aconfigFlags, SYSTEM_FLAGS_PATH);
-                    addAconfigFlagsFromFile(aconfigFlags, SYSTEM_EXT_FLAGS_PATH);
-                    addAconfigFlagsFromFile(aconfigFlags, PRODUCT_FLAGS_PATH);
-                    addAconfigFlagsFromFile(aconfigFlags, VENDOR_FLAGS_PATH);
-                } catch (IOException e) {
-                    Slog.e(TAG, "error loading aconfig flags", e);
-                }
-
-                BootNotificationCreator notifCreator =
-                        new BootNotificationCreator(
-                                getContext().getApplicationContext(), aconfigFlags);
-
-                DeviceConfig.addOnPropertiesChangedListener(
-                        STAGED_NAMESPACE, AsyncTask.THREAD_POOL_EXECUTOR, notifCreator);
-            }
-
-            boolean unattendedRebootEnabled =
-                    DeviceConfig.getBoolean(CONFIGURATION_NAMESPACE, UNATTENDED_REBOOT_FLAG, false);
-            if (unattendedRebootEnabled && enableUnattendedReboot()) {
-                // Only schedule a reboot if this is the first boot since an OTA.
-                if (!getContext().getPackageManager().isDeviceUpgrading()) {
-                    return;
-                }
-
-                mUnattendedRebootManager =
-                        new UnattendedRebootManager(getContext().getApplicationContext());
-                Slog.i(TAG, "Registering receivers");
-                getContext()
-                        .registerReceiver(
-                                new BroadcastReceiver() {
-                                    @Override
-                                    public void onReceive(Context context, Intent intent) {
-                                        mUnattendedRebootManager.prepareUnattendedReboot();
-                                        mUnattendedRebootManager.scheduleReboot();
-                                    }
-                                },
-                                new IntentFilter(Intent.ACTION_BOOT_COMPLETED));
-                getContext()
-                        .registerReceiver(
-                                new BroadcastReceiver() {
-                                    @Override
-                                    public void onReceive(Context context, Intent intent) {
-                                        mUnattendedRebootManager.maybePrepareUnattendedReboot();
-                                    }
-                                },
-                                new IntentFilter(Intent.ACTION_LOCKED_BOOT_COMPLETED));
-            }
         }
 
         private void addAconfigFlagsFromFile(Map<String, Set<String>> aconfigFlags, String fileName)

@@ -53,7 +53,6 @@ android_test {
         "android.test.runner.stubs.system",
         "framework-connectivity.stubs.module_lib",
         "framework-configinfrastructure.stubs.module_lib",
-        "DeviceConfigServiceResources",
     ],
     // Test coverage system runs on different devices. Need to
     // compile for all architecture.
