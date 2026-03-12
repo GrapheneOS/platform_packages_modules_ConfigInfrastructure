@@ -19,15 +19,6 @@ flag {
 }
 
 flag {
-  name: "stage_flags_for_build"
-  namespace: "core_experiments_team_internal"
-  description: "API flag for stageFlagsForBuild"
-  bug: "360384952"
-  is_fixed_read_only: true
-  is_exported: true
-}
-
-flag {
     name: "dump_improvements"
     namespace: "core_experiments_team_internal"
     description: "Added more information on `dumpsys device_config`"
