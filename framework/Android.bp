@@ -60,6 +60,7 @@ java_sdk_library {
         "modules-utils-proto",
         "modules-utils-ravenwood",
         "aconfig_storage_file_java",
+        "libstatslog_aconfig_java_mainline",
     ],
     aconfig_declarations: [
         "configinfra_framework_flags",

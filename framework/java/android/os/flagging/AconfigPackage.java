@@ -17,6 +17,9 @@
 package android.os.flagging;
 
 import static android.aconfig.storage.TableUtils.StorageFilesBundle;
+import static android.os.flagging.statslog.AconfigStatsLog.ACONFIG_ERROR_OCCURRED;
+import static android.os.flagging.statslog.AconfigStatsLog.ACONFIG_ERROR_OCCURRED__ERROR__ACONFIG_ERROR_UNSPECIFIED;
+import static android.os.flagging.statslog.AconfigStatsLog.ACONFIG_ERROR_OCCURRED__OPERATION__ACONFIG_OPERATION_LOAD_MAINLINE_PACKAGE_MAP;
 import static android.provider.flags.Flags.FLAG_NEW_STORAGE_PUBLIC_API;
 import static android.provider.flags.Flags.FLAG_PUBLIC_INTERNAL_READ_API;
 
@@ -28,6 +31,7 @@ import android.annotation.FlaggedApi;
 import android.annotation.NonNull;
 import android.annotation.SystemApi;
 import android.os.Build;
+import android.os.flagging.statslog.AconfigStatsLog;
 import android.util.Log;
 
 import com.android.modules.utils.ravenwood.RavenwoodHelper;
@@ -100,7 +104,8 @@ public class AconfigPackage {
     /** @hide */
     static final Map<String, StorageFilesBundle> sStorageFilesCache = new HashMap<>();
 
-    private AconfigPackage() {}
+    private AconfigPackage() {
+    }
 
     static {
         File mapDir = new File(MAP_PATH);
@@ -109,8 +114,8 @@ public class AconfigPackage {
             for (String file : mapFiles) {
                 if (!file.endsWith(PMAP_FILE_EXT)
                         || (READ_PLATFORM_FROM_PLATFORM_API
-                                && PlatformAconfigPackage.PLATFORM_PACKAGE_MAP_FILES.contains(
-                                        file))) {
+                        && PlatformAconfigPackage.PLATFORM_PACKAGE_MAP_FILES.contains(
+                        file))) {
                     continue;
                 }
                 try {
@@ -126,6 +131,9 @@ public class AconfigPackage {
                         sStorageFilesCache.put(packageName, files);
                     }
                 } catch (Exception e) {
+                    AconfigStatsLog.write(ACONFIG_ERROR_OCCURRED,
+                            ACONFIG_ERROR_OCCURRED__OPERATION__ACONFIG_OPERATION_LOAD_MAINLINE_PACKAGE_MAP,
+                            ACONFIG_ERROR_OCCURRED__ERROR__ACONFIG_ERROR_UNSPECIFIED);
                     // pass
                     Log.w(TAG, "failed to map some package from " + file + ": " + e.toString());
                 }
@@ -140,11 +148,13 @@ public class AconfigPackage {
      *
      * @param packageName The name of the Aconfig package to load.
      * @return An instance of {@link AconfigPackage}, which may be empty if the package is not found
-     *     in the container.
+     * in the container.
      * @throws AconfigStorageReadException if there is an error reading from Aconfig Storage, such
-     *     as if the storage system is not found, the package is not found, or there is an error
-     *     reading the storage file. The specific error code can be obtained using {@link
-     *     AconfigStorageReadException#getErrorCode()}.
+     *                                     as if the storage system is not found, the package is not
+     *                                     found, or there is an error
+     *                                     reading the storage file. The specific error code can be
+     *                                     obtained using {@link
+     *                                     AconfigStorageReadException#getErrorCode()}.
      */
     @FlaggedApi(FLAG_NEW_STORAGE_PUBLIC_API)
     public static @NonNull AconfigPackage load(@NonNull String packageName) {
@@ -189,7 +199,7 @@ public class AconfigPackage {
      * loaded Aconfig Package, its value is returned. Otherwise, the provided `defaultValue` is
      * returned.
      *
-     * @param flagName The name of the flag (excluding any package name prefix).
+     * @param flagName     The name of the flag (excluding any package name prefix).
      * @param defaultValue The value to return if the flag is not found.
      * @return The boolean value of the flag, or `defaultValue` if the flag is not found.
      */
@@ -216,7 +226,7 @@ public class AconfigPackage {
      * the value of a flag declared in another container), use #getBooleanFlagValue, which has
      * safety checks for cross-container access.
      *
-     * @param flagName The name of the flag (excluding any package name prefix).
+     * @param flagName     The name of the flag (excluding any package name prefix).
      * @param defaultValue The value to return if the flag is not found.
      * @return The boolean value of the flag, or `defaultValue` if the flag is not found.
      * @hide
