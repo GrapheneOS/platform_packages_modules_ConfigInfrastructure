@@ -169,12 +169,6 @@ package android.provider {
     method @NonNull public android.provider.DeviceConfig.Properties.Builder setString(@NonNull String, @Nullable String);
   }
 
-  @FlaggedApi("android.provider.flags.stage_flags_for_build") public final class StageOtaFlags {
-    method @FlaggedApi("android.provider.flags.stage_flags_for_build") public static int stageBooleanAconfigFlagsForBuild(@NonNull java.util.Map<java.lang.String,java.lang.Boolean>, @NonNull String);
-    field public static final int STATUS_STAGE_SUCCESS = 0; // 0x0
-    field public static final int STATUS_STORAGE_NOT_ENABLED = -1; // 0xffffffff
-  }
-
   public final class UpdatableDeviceConfigServiceReadiness {
     method public static boolean shouldStartUpdatableService();
   }

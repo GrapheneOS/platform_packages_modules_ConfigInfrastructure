@@ -1,6 +1,4 @@
 // Baseline format: 1.0
-Todo: android.provider.StageOtaFlags#stageBooleanAconfigFlagsForBuild(java.util.Map<java.lang.String,java.lang.Boolean>, String):
-    Documentation mentions 'TODO'
 
 UnflaggedApi: android.provider.DeviceConfig#NAMESPACE_CORE_EXPERIMENTS_TEAM_INTERNAL:
     New API must be flagged with @FlaggedApi: field android.provider.DeviceConfig.NAMESPACE_CORE_EXPERIMENTS_TEAM_INTERNAL
