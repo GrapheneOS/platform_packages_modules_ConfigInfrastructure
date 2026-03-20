@@ -1,4 +1,7 @@
-// Signature format: 2.0
+// Signature format: 6.0
+// - style=java
+// - strip-java-lang-prefix=legacy
+// - type-argument-spacing=legacy
 package android.os.flagging {
 
   @FlaggedApi("android.provider.flags.new_storage_public_api") public final class ConfigInfrastructureFrameworkInitializer {
