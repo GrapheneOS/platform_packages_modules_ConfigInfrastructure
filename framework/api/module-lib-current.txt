@@ -1,6 +1,5 @@
 // Signature format: 6.0
 // - style=java
-// - type-argument-spacing=legacy
 package android.os.flagging {
 
   @FlaggedApi("android.provider.flags.new_storage_public_api") public final class ConfigInfrastructureFrameworkInitializer {
@@ -46,7 +45,7 @@ package android.provider {
   }
 
   public static class DeviceConfig.Properties {
-    ctor public DeviceConfig.Properties(@NonNull String, @Nullable java.util.Map<String,String>);
+    ctor public DeviceConfig.Properties(@NonNull String, @Nullable java.util.Map<String, String>);
   }
 
   public final class DeviceConfigShellCommandHandler {
