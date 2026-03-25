@@ -1,7 +1,5 @@
 // Signature format: 6.0
 // - style=java
-// - strip-java-lang-prefix=legacy
-// - type-argument-spacing=legacy
 package android.os.flagging {
 
   public class AconfigPackage {
@@ -14,12 +12,12 @@ package android.os.flagging {
   }
 
   @FlaggedApi("android.provider.flags.new_storage_public_api") public final class FlagManager {
-    method @FlaggedApi("android.provider.flags.new_storage_public_api") public void clearBooleanLocalOverridesImmediately(@Nullable java.util.Set<java.lang.String>);
-    method @FlaggedApi("android.provider.flags.new_storage_public_api") public void clearBooleanLocalOverridesOnReboot(@Nullable java.util.Set<java.lang.String>);
-    method @FlaggedApi("android.provider.flags.new_storage_public_api") public void setBooleanLocalOverridesImmediately(@NonNull java.util.Map<java.lang.String,java.lang.Boolean>);
-    method @FlaggedApi("android.provider.flags.new_storage_public_api") public void setBooleanLocalOverridesOnReboot(@NonNull java.util.Map<java.lang.String,java.lang.Boolean>);
-    method @FlaggedApi("android.provider.flags.new_storage_public_api") public void setBooleanOverridesOnReboot(@NonNull java.util.Map<java.lang.String,java.lang.Boolean>);
-    method @FlaggedApi("android.provider.flags.new_storage_public_api") public void setBooleanOverridesOnSystemBuildFingerprint(@NonNull String, @NonNull java.util.Map<java.lang.String,java.lang.Boolean>);
+    method @FlaggedApi("android.provider.flags.new_storage_public_api") public void clearBooleanLocalOverridesImmediately(@Nullable java.util.Set<String>);
+    method @FlaggedApi("android.provider.flags.new_storage_public_api") public void clearBooleanLocalOverridesOnReboot(@Nullable java.util.Set<String>);
+    method @FlaggedApi("android.provider.flags.new_storage_public_api") public void setBooleanLocalOverridesImmediately(@NonNull java.util.Map<String, Boolean>);
+    method @FlaggedApi("android.provider.flags.new_storage_public_api") public void setBooleanLocalOverridesOnReboot(@NonNull java.util.Map<String, Boolean>);
+    method @FlaggedApi("android.provider.flags.new_storage_public_api") public void setBooleanOverridesOnReboot(@NonNull java.util.Map<String, Boolean>);
+    method @FlaggedApi("android.provider.flags.new_storage_public_api") public void setBooleanOverridesOnSystemBuildFingerprint(@NonNull String, @NonNull java.util.Map<String, Boolean>);
   }
 
 }
@@ -33,19 +31,19 @@ package android.provider {
     method @RequiresPermission(android.Manifest.permission.MONITOR_DEVICE_CONFIG_ACCESS) public static void clearMonitorCallback(@NonNull android.content.ContentResolver);
     method @RequiresPermission(anyOf={android.Manifest.permission.WRITE_DEVICE_CONFIG, android.Manifest.permission.WRITE_ALLOWLISTED_DEVICE_CONFIG}) public static boolean deleteProperty(@NonNull String, @NonNull String);
     method @FlaggedApi("android.provider.flags.dump_improvements") public static void dump(@NonNull java.io.PrintWriter, @NonNull String, @Nullable String[]);
-    method @NonNull public static java.util.Set<java.lang.String> getAdbWritableFlags();
-    method @FlaggedApi("android.provider.flags.device_config_writable_namespaces_api") @NonNull public static java.util.Set<java.lang.String> getAdbWritableNamespaces();
+    method @NonNull public static java.util.Set<String> getAdbWritableFlags();
+    method @FlaggedApi("android.provider.flags.device_config_writable_namespaces_api") @NonNull public static java.util.Set<String> getAdbWritableNamespaces();
     method @NonNull public static java.util.Set<android.provider.DeviceConfig.Properties> getAllProperties();
     method public static boolean getBoolean(@NonNull String, @NonNull String, boolean);
     method @RequiresPermission(android.Manifest.permission.READ_DEVICE_CONFIG) public static float getFloat(@NonNull String, @NonNull String, float);
     method @RequiresPermission(android.Manifest.permission.READ_DEVICE_CONFIG) public static int getInt(@NonNull String, @NonNull String, int);
     method @RequiresPermission(android.Manifest.permission.READ_DEVICE_CONFIG) public static long getLong(@NonNull String, @NonNull String, long);
-    method @NonNull @RequiresPermission(android.Manifest.permission.READ_DEVICE_CONFIG) public static android.provider.DeviceConfig.Properties getProperties(@NonNull String, @NonNull java.lang.String...);
+    method @NonNull @RequiresPermission(android.Manifest.permission.READ_DEVICE_CONFIG) public static android.provider.DeviceConfig.Properties getProperties(@NonNull String, @NonNull String...);
     method @Nullable public static String getProperty(@NonNull String, @NonNull String);
-    method @NonNull public static java.util.List<java.lang.String> getPublicNamespaces();
+    method @NonNull public static java.util.List<String> getPublicNamespaces();
     method @Nullable @RequiresPermission(android.Manifest.permission.READ_DEVICE_CONFIG) public static String getString(@NonNull String, @NonNull String, @Nullable String);
     method @RequiresPermission(anyOf={android.Manifest.permission.WRITE_DEVICE_CONFIG, android.Manifest.permission.READ_WRITE_SYNC_DISABLED_MODE_CONFIG}) public static int getSyncDisabledMode();
-    method @NonNull public static java.util.Map<java.lang.String,java.util.Map<java.lang.String,java.lang.String>> getUnderlyingValuesForOverriddenFlags();
+    method @NonNull public static java.util.Map<String, java.util.Map<String, String>> getUnderlyingValuesForOverriddenFlags();
     method public static void removeOnPropertiesChangedListener(@NonNull android.provider.DeviceConfig.OnPropertiesChangedListener);
     method @RequiresPermission(anyOf={android.Manifest.permission.WRITE_DEVICE_CONFIG, android.Manifest.permission.WRITE_ALLOWLISTED_DEVICE_CONFIG}) public static void resetToDefaults(int, @Nullable String);
     method @RequiresPermission(android.Manifest.permission.WRITE_DEVICE_CONFIG) public static boolean setLocalOverride(@NonNull String, @NonNull String, @NonNull String);
@@ -139,7 +137,7 @@ package android.provider {
     field public static final int SYNC_DISABLED_MODE_UNTIL_REBOOT = 2; // 0x2
   }
 
-  public static class DeviceConfig.BadConfigException extends java.lang.Exception {
+  public static class DeviceConfig.BadConfigException extends Exception {
     ctor public DeviceConfig.BadConfigException();
   }
 
@@ -156,7 +154,7 @@ package android.provider {
     method public boolean getBoolean(@NonNull String, boolean);
     method public float getFloat(@NonNull String, float);
     method public int getInt(@NonNull String, int);
-    method @NonNull public java.util.Set<java.lang.String> getKeyset();
+    method @NonNull public java.util.Set<String> getKeyset();
     method public long getLong(@NonNull String, long);
     method @NonNull public String getNamespace();
     method @Nullable public String getString(@NonNull String, @Nullable String);

@@ -1,6 +1,5 @@
 // Signature format: 6.0
 // - style=java
-// - strip-java-lang-prefix=legacy
 package android.os.flagging {
 
   public class AconfigPackage {
@@ -8,7 +7,7 @@ package android.os.flagging {
     method @FlaggedApi("android.provider.flags.new_storage_public_api") @NonNull public static android.os.flagging.AconfigPackage load(@NonNull String);
   }
 
-  @FlaggedApi("android.provider.flags.new_storage_public_api") public class AconfigStorageReadException extends java.lang.RuntimeException {
+  @FlaggedApi("android.provider.flags.new_storage_public_api") public class AconfigStorageReadException extends RuntimeException {
     ctor @FlaggedApi("android.provider.flags.new_storage_public_api") public AconfigStorageReadException(int, @NonNull String);
     ctor @FlaggedApi("android.provider.flags.new_storage_public_api") public AconfigStorageReadException(int, @NonNull String, @NonNull Throwable);
     ctor @FlaggedApi("android.provider.flags.new_storage_public_api") public AconfigStorageReadException(int, @NonNull Throwable);
