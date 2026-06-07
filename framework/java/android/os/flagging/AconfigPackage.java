@@ -126,8 +126,9 @@ public class AconfigPackage {
                     FlagValueList fValueList =
                             FlagValueList.fromBytes(mapStorageFile(BOOT_PATH + container + ".val"));
                     StorageFilesBundle files = new StorageFilesBundle(pTable, fTable, fValueList);
+                    boolean log = Log.isLoggable(TAG, Log.VERBOSE);
                     for (String packageName : pTable.getPackageList()) {
-                        Log.i(TAG, packageName + " is mapped to " + container);
+                        if (log) Log.v(TAG, packageName + " is mapped to " + container);
                         sStorageFilesCache.put(packageName, files);
                     }
                 } catch (Exception e) {
